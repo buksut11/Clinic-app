@@ -14,14 +14,14 @@ non-technical receptionist to use every day.
 | Module | What it does |
 | --- | --- |
 | **Patients** | Register, as-you-type search, full profile (visits, prescriptions, invoices, documents), edit, soft-delete (archive), file uploads |
-| **Appointments** | Day/week calendar, filter by doctor, book (with inline new-patient registration), configurable slot length, double-booking prevention, statuses, reschedule, cancel with reason, **Today's Queue** |
+| **Appointments** | Day/week calendar, filter by doctor, book (with inline new-patient registration), **working-hours-aware slot picker** (only shows free slots on days the doctor works), double-booking prevention, statuses, reschedule, cancel with reason, **Today's Queue** |
 | **Consultations (EMR)** | Patient summary with allergies/chronic conditions highlighted in red, consultation form (complaint, symptoms, exam, diagnosis + ICD-10, plan, follow-up), append-only notes with **visible edit history** |
 | **Vitals** | Weight, height, blood pressure, temperature, pulse — recorded by nurses/doctors |
 | **Prescriptions** | Multi-medicine prescriptions linked to a visit, **printable PDF** with clinic header + doctor signature line |
 | **Lab orders** | Order from a configurable catalog, status workflow (Ordered → Sample collected → Result ready), text results or **file upload** |
-| **Pharmacy** | Medication inventory with batch/expiry, **low-stock & expiry alerts**, receive stock, audited stock adjustments, a full **stock-movement ledger**, and a **dispensing workflow** that fills doctors' prescriptions (auto-matching medicines to inventory) and deducts stock in a transaction. Over-the-counter dispensing and dispensing history included |
+| **Pharmacy** | Medication inventory with batch/expiry, **low-stock & expiry alerts**, receive stock, audited stock adjustments, a full **stock-movement ledger**, and a **dispensing workflow** that fills doctors' prescriptions (auto-matching medicines to inventory) and deducts stock in a transaction. Optionally **charges dispensed medicines to the patient's invoice**. Over-the-counter dispensing and dispensing history included |
 | **Billing** | Configurable price list, invoices auto-filled from a visit, discounts (amount/%) + tax, payments (cash/card/insurance), partial payments & outstanding balances, **PDF invoice/receipt**, daily cash report |
-| **Reports** | Dashboard KPIs, revenue by doctor/service/method, appointment volume, top diagnoses, outstanding balances — all **exportable to CSV** |
+| **Reports** | **Role-aware dashboard** (financials shown only to admin/reception; doctors and pharmacists get operational KPIs), **inline bar charts**, revenue by doctor/service/method, appointment volume, top diagnoses, outstanding balances — all **exportable to CSV** |
 | **Settings (Admin)** | Clinic profile + logo, staff management (create/deactivate/reset password), doctor schedules, price list, lab catalog, **audit log** |
 | **Security** | bcrypt-hashed passwords, JWT sessions, **role-based access enforced on the server**, server-side validation (Zod), soft deletes, created/updated timestamps, audit trail |
 | **i18n** | English + Arabic with **RTL-ready** layout (toggle in the top bar) |
@@ -159,6 +159,8 @@ CLIENT_ORIGIN="http://localhost:5173"
 - Passwords are hashed with **bcrypt** — never stored in plain text.
 - Every API route requires authentication except `POST /api/auth/login`.
 - **Role checks run on the server** (`requireRole` middleware), not just in the UI.
+- **`helmet`** sets security headers and **login is rate-limited** (10 attempts / 15 min / IP) to blunt brute-force attacks.
+- Financial figures (revenue, balances) are withheld from the API for roles that shouldn't see them, not merely hidden in the UI.
 - All forms are validated server-side with **Zod**.
 - Patients, appointments and invoices are **soft-deleted** (archived), never hard-deleted.
 - Every record carries created/updated timestamps and a created-by user.

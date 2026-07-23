@@ -73,11 +73,20 @@ router.get(
         { nationalId: { contains: q } },
       ];
     }
-    const patients = await prisma.patient.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+
+    // Paginated response when ?page is given (main list); otherwise a plain array
+    // capped at 20 for as-you-type autocompletes.
+    if (req.query.page !== undefined) {
+      const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+      const pageSize = Math.min(100, Math.max(1, parseInt((req.query.pageSize as string) || '20', 10)));
+      const [items, total] = await Promise.all([
+        prisma.patient.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        prisma.patient.count({ where }),
+      ]);
+      return res.json({ items, total, page, pageSize, pages: Math.ceil(total / pageSize) });
+    }
+
+    const patients = await prisma.patient.findMany({ where, orderBy: { createdAt: 'desc' }, take: 20 });
     res.json(patients);
   })
 );

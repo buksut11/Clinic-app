@@ -6,24 +6,10 @@ import { validateBody, asyncHandler } from '../utils/validate';
 import { audit } from '../utils/audit';
 import { Roles } from '../constants';
 import { startDoc, drawHeader, ClinicHeader } from '../utils/pdf';
+import { nextInvoiceNo } from '../utils/sequences';
 
 const router = Router();
 router.use(requireAuth);
-
-async function nextInvoiceNo(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `INV-${year}-`;
-  const last = await prisma.invoice.findFirst({
-    where: { invoiceNo: { startsWith: prefix } },
-    orderBy: { invoiceNo: 'desc' },
-  });
-  let seq = 1;
-  if (last) {
-    const n = parseInt(last.invoiceNo.slice(prefix.length), 10);
-    if (!isNaN(n)) seq = n + 1;
-  }
-  return prefix + String(seq).padStart(5, '0');
-}
 
 const itemSchema = z.object({
   description: z.string().min(1),
@@ -102,15 +88,22 @@ router.get(
     const where: any = { isDeleted: false };
     if (req.query.patientId) where.patientId = req.query.patientId;
     if (req.query.status) where.status = req.query.status;
-    const invoices = await prisma.invoice.findMany({
-      where,
-      include: {
-        patient: { select: { fullName: true, patientNo: true } },
-        payments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+    const include = {
+      patient: { select: { fullName: true, patientNo: true } },
+      payments: true,
+    };
+
+    if (req.query.page !== undefined) {
+      const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+      const pageSize = Math.min(100, Math.max(1, parseInt((req.query.pageSize as string) || '20', 10)));
+      const [items, total] = await Promise.all([
+        prisma.invoice.findMany({ where, include, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        prisma.invoice.count({ where }),
+      ]);
+      return res.json({ items, total, page, pageSize, pages: Math.ceil(total / pageSize) });
+    }
+
+    const invoices = await prisma.invoice.findMany({ where, include, orderBy: { createdAt: 'desc' }, take: 200 });
     res.json(invoices);
   })
 );
@@ -135,7 +128,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { items, discountType, discountValue, taxRate } = req.body;
     const { subtotal, taxAmount, total } = computeTotals(items, discountType, discountValue, taxRate);
-    const invoiceNo = await nextInvoiceNo();
+    const invoiceNo = await nextInvoiceNo(prisma);
     const inv = await prisma.invoice.create({
       data: {
         invoiceNo,

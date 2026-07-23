@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth';
 import patientRoutes from './routes/patients';
@@ -19,8 +21,21 @@ const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
+// Security headers. crossOriginResourcePolicy is relaxed so the SPA on :5173 can
+// load uploaded images/files served from this origin.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: [CLIENT_ORIGIN, 'http://localhost:5173', 'http://localhost:4173'] }));
 app.use(express.json({ limit: '2mb' }));
+
+// Throttle login attempts to blunt brute-force / credential-stuffing.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please wait a few minutes and try again.' },
+});
+app.use('/api/auth/login', loginLimiter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 

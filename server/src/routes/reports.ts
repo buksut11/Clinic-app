@@ -57,14 +57,37 @@ router.get(
       return s + Math.max(0, inv.total - paid);
     }, 0);
 
-    res.json({
+    // Appointment status breakdown for the month (used by the mini chart)
+    const statusCounts: Record<string, number> = {};
+    for (const a of monthAppointments) statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
+
+    // Base payload every role can see (operational, non-financial)
+    const payload: Record<string, unknown> = {
       todaysAppointments,
-      revenueToday: paymentsToday._sum.amount || 0,
-      revenueMonth: paymentsMonth._sum.amount || 0,
       newPatientsMonth,
       noShowRate,
-      outstandingTotal,
-    });
+      appointmentStatus: statusCounts,
+    };
+
+    // Financials are visible only to admin and reception
+    const canSeeMoney = req.user!.role === Roles.ADMIN || req.user!.role === Roles.RECEPTIONIST;
+    if (canSeeMoney) {
+      payload.revenueToday = paymentsToday._sum.amount || 0;
+      payload.revenueMonth = paymentsMonth._sum.amount || 0;
+      payload.outstandingTotal = outstandingTotal;
+    }
+
+    // Role-specific extras
+    if (req.user!.role === Roles.DOCTOR) {
+      payload.myAppointmentsToday = await prisma.appointment.count({
+        where: { isDeleted: false, doctorId: req.user!.id, date: { gte: dStart, lt: dEnd } },
+      });
+    }
+    if (req.user!.role === Roles.PHARMACIST || req.user!.role === Roles.ADMIN) {
+      payload.pendingPrescriptions = await prisma.prescription.count({ where: { dispensedAt: null } });
+    }
+
+    res.json(payload);
   })
 );
 

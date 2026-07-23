@@ -27,6 +27,7 @@ export default function DispenseModal({
   const [lines, setLines] = useState<Line[]>([]);
   const [search, setSearch] = useState('');
   const [notes, setNotes] = useState('');
+  const [chargeToInvoice, setChargeToInvoice] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -82,13 +83,14 @@ export default function DispenseModal({
     if (hasStockIssue) { toast('Fix quantities — some exceed available stock', 'error'); return; }
     setSaving(true);
     try {
-      await api.post('/pharmacy/dispense', {
+      const { data } = await api.post('/pharmacy/dispense', {
         patientId: prescription?.patient.id || null,
         prescriptionId: prescription?.id || null,
         notes: notes || null,
+        chargeToInvoice: chargeToInvoice && !!prescription,
         items: lines.map((l) => ({ medicationId: l.medicationId, quantity: l.quantity })),
       });
-      toast('Dispensed successfully', 'success');
+      toast(data.invoice ? `Dispensed — invoice ${data.invoice.invoiceNo} raised` : 'Dispensed successfully', 'success');
       onDispensed();
     } catch (err) {
       toast(errMsg(err), 'error');
@@ -164,6 +166,13 @@ export default function DispenseModal({
         <label className="label">Notes (optional)</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Counselled patient on dosage" />
       </div>
+
+      {prescription && (
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" checked={chargeToInvoice} onChange={(e) => setChargeToInvoice(e.target.checked)} />
+          Charge these medicines to the patient (raises an unpaid invoice reception can collect)
+        </label>
+      )}
 
       <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
         <div className="text-lg font-bold text-slate-800">Total: {money(total)}</div>

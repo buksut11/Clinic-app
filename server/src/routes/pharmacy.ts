@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { validateBody, asyncHandler } from '../utils/validate';
 import { audit } from '../utils/audit';
 import { Roles, MED_FORMS } from '../constants';
+import { nextInvoiceNo } from '../utils/sequences';
 
 const router = Router();
 router.use(requireAuth);
@@ -279,13 +280,17 @@ const dispenseSchema = z.object({
       })
     )
     .min(1, 'Add at least one item to dispense'),
+  chargeToInvoice: z.boolean().optional().default(false),
 });
 router.post(
   '/dispense',
   requireRole(Roles.ADMIN, Roles.PHARMACIST),
   validateBody(dispenseSchema),
   asyncHandler(async (req, res) => {
-    const { patientId, prescriptionId, notes, items } = req.body;
+    const { patientId, prescriptionId, notes, items, chargeToInvoice } = req.body;
+    if (chargeToInvoice && !patientId) {
+      return res.status(400).json({ error: 'A patient is required to charge medicines to an invoice' });
+    }
 
     // Load all medications and validate stock up-front
     const meds = await prisma.medication.findMany({ where: { id: { in: items.map((i: any) => i.medicationId) } } });
@@ -349,11 +354,37 @@ router.post(
       if (prescriptionId) {
         await tx.prescription.update({ where: { id: prescriptionId }, data: { dispensedAt: new Date() } });
       }
-      return dispense;
+
+      // Optionally raise an invoice so the medicines are captured as revenue
+      let invoice = null;
+      if (chargeToInvoice && patientId) {
+        const invoiceNo = await nextInvoiceNo(tx);
+        invoice = await tx.invoice.create({
+          data: {
+            invoiceNo,
+            patientId,
+            subtotal: total,
+            taxRate: 0, // medicines priced tax-inclusive here; adjust in Billing if needed
+            taxAmount: 0,
+            total,
+            status: 'UNPAID',
+            createdById: req.user!.id,
+            items: {
+              create: lineData.map((l: any) => ({
+                description: `Medicine: ${l.med.name}${l.med.strength ? ' ' + l.med.strength : ''}`,
+                quantity: l.quantity,
+                unitPrice: l.unitPrice,
+                amount: l.amount,
+              })),
+            },
+          },
+        });
+      }
+      return { dispense, invoice };
     });
 
-    await audit(req.user, 'DISPENSE', 'Dispense', result.id, `${dispenseNo} — ${items.length} item(s), total ${total}`);
-    res.status(201).json(result);
+    await audit(req.user, 'DISPENSE', 'Dispense', result.dispense.id, `${dispenseNo} — ${items.length} item(s), total ${total}${result.invoice ? `, invoiced ${result.invoice.invoiceNo}` : ''}`);
+    res.status(201).json({ ...result.dispense, invoice: result.invoice });
   })
 );
 

@@ -32,6 +32,8 @@ export default function BookingModal({
   const [newPatientMode, setNewPatientMode] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
+  const [slotInfo, setSlotInfo] = useState<{ working: boolean; slots: string[]; workingHours?: { start: string; end: string } } | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [f, setF] = useState({
     doctorId: '',
@@ -64,6 +66,23 @@ export default function BookingModal({
   }, [patientQuery]);
 
   const slotLength = doctors.find((d) => d.id === f.doctorId)?.slotLength || 20;
+
+  // Fetch available slots whenever the doctor or date changes (respects working hours)
+  useEffect(() => {
+    if (!open || !f.doctorId || !f.date) return;
+    setLoadingSlots(true);
+    setSlotInfo(null);
+    api
+      .get('/appointments/available-slots', { params: { doctorId: f.doctorId, date: f.date } })
+      .then((r) => {
+        setSlotInfo(r.data);
+        // If the currently selected start time is no longer valid, reset it
+        setF((s) => ({ ...s, startTime: r.data.slots.includes(s.startTime) ? s.startTime : r.data.slots[0] || '' }));
+      })
+      .catch(() => setSlotInfo({ working: false, slots: [] }))
+      .finally(() => setLoadingSlots(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, f.doctorId, f.date]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,11 +175,23 @@ export default function BookingModal({
           </div>
           <div>
             <label className="label">Date *</label>
-            <input className="input" type="date" value={f.date} onChange={(e) => set('date', e.target.value)} required />
+            <input className="input" type="date" value={f.date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => set('date', e.target.value)} required />
           </div>
           <div>
-            <label className="label">Start time * <span className="font-normal text-slate-400">({slotLength} min slot)</span></label>
-            <input className="input" type="time" value={f.startTime} onChange={(e) => set('startTime', e.target.value)} required />
+            <label className="label">
+              Start time * <span className="font-normal text-slate-400">({slotLength} min slot)</span>
+            </label>
+            {loadingSlots ? (
+              <div className="input flex items-center text-slate-400">Loading slots…</div>
+            ) : slotInfo && !slotInfo.working ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">The doctor does not work on this day. Pick another date.</div>
+            ) : slotInfo && slotInfo.slots.length === 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">No free slots left{slotInfo.workingHours ? ` (${slotInfo.workingHours.start}–${slotInfo.workingHours.end})` : ''}.</div>
+            ) : (
+              <select className="input" value={f.startTime} onChange={(e) => set('startTime', e.target.value)} required>
+                {slotInfo?.slots.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
           </div>
         </div>
 
@@ -171,7 +202,7 @@ export default function BookingModal({
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={() => { onClose(); reset(); }}>Cancel</button>
-          <button className="btn-primary" disabled={saving}>{saving ? 'Booking…' : 'Book appointment'}</button>
+          <button className="btn-primary" disabled={saving || !f.startTime || !(slotInfo?.slots.length)}>{saving ? 'Booking…' : 'Book appointment'}</button>
         </div>
       </form>
     </Modal>

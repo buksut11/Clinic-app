@@ -3,6 +3,7 @@ import { api, errMsg } from '../lib/api';
 import { Spinner, ErrorState, useToast } from '../components/ui';
 import { money } from '../lib/format';
 import { format } from 'date-fns';
+import BarChart from '../components/BarChart';
 
 interface ReportData {
   totalRevenue: number;
@@ -75,9 +76,26 @@ export default function Reports() {
         <ErrorState message={error} onRetry={load} />
       ) : data ? (
         <div className="space-y-4">
-          <div className="card p-5">
-            <p className="text-sm text-slate-500">Total revenue in range</p>
-            <p className="text-3xl font-bold text-green-600">{money(data.totalRevenue)}</p>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="card p-5">
+              <p className="text-sm text-slate-500">Total revenue in range</p>
+              <p className="text-3xl font-bold text-green-600">{money(data.totalRevenue)}</p>
+            </div>
+            <div className="card p-5 lg:col-span-2">
+              <h3 className="mb-3 font-semibold text-slate-800">Revenue by doctor</h3>
+              <BarChart data={data.revenueByDoctor.map((r) => ({ label: r.name, value: Math.round(r.amount) }))} format={(n) => money(n)} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="card p-5">
+              <h3 className="mb-3 font-semibold text-slate-800">Appointment volume</h3>
+              <BarChart data={data.appointmentVolume.map((r) => ({ label: r.status.replace('_', ' '), value: r.count }))} />
+            </div>
+            <div className="card p-5">
+              <h3 className="mb-3 font-semibold text-slate-800">Revenue by service</h3>
+              <BarChart data={data.revenueByService.slice(0, 8).map((r) => ({ label: r.name, value: Math.round(r.amount), color: '#3b82f6' }))} format={(n) => money(n)} />
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">

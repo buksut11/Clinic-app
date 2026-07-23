@@ -18,35 +18,46 @@ export default function Patients() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
   const debounce = useRef<ReturnType<typeof setTimeout>>();
+  const pageSize = 15;
 
-  const load = (query: string, archived: boolean) => {
+  const load = (query: string, archived: boolean, p: number) => {
     setLoading(true);
     setError('');
     api
-      .get('/patients', { params: { q: query, includeArchived: archived } })
-      .then((r) => setPatients(r.data))
+      .get('/patients', { params: { q: query, includeArchived: archived, page: p, pageSize } })
+      .then((r) => {
+        setPatients(r.data.items);
+        setTotal(r.data.total);
+        setPages(r.data.pages || 1);
+      })
       .catch((e) => setError(errMsg(e)))
       .finally(() => setLoading(false));
   };
 
-  // As-you-type search (debounced)
+  // Reset to page 1 whenever the query/filter changes
+  useEffect(() => { setPage(1); }, [q, includeArchived]);
+
+  // As-you-type search (debounced) + pagination
   useEffect(() => {
     clearTimeout(debounce.current);
     debounce.current = setTimeout(() => {
-      load(q, includeArchived);
+      load(q, includeArchived, page);
       setParams(q ? { q } : {}, { replace: true });
     }, 250);
     return () => clearTimeout(debounce.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, includeArchived]);
+  }, [q, includeArchived, page]);
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Patients</h1>
-          <p className="text-sm text-slate-500">{patients.length} shown</p>
+          <p className="text-sm text-slate-500">{total} patient{total === 1 ? '' : 's'}</p>
         </div>
         {can('ADMIN', 'RECEPTIONIST') && (
           <button className="btn-primary" onClick={() => setShowForm(true)}>
@@ -76,7 +87,7 @@ export default function Patients() {
         {loading ? (
           <Spinner />
         ) : error ? (
-          <ErrorState message={error} onRetry={() => load(q, includeArchived)} />
+          <ErrorState message={error} onRetry={() => load(q, includeArchived, page)} />
         ) : patients.length === 0 ? (
           <EmptyState
             title={q ? 'No patients match your search' : 'No patients yet'}
@@ -115,12 +126,24 @@ export default function Patients() {
         )}
       </div>
 
+      {/* Pagination */}
+      {!loading && !error && pages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-slate-500">Page {page} of {pages}</p>
+          <div className="flex gap-2">
+            <button className="btn-secondary px-3 py-1.5" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>← Previous</button>
+            <button className="btn-secondary px-3 py-1.5" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Next →</button>
+          </div>
+        </div>
+      )}
+
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Register patient" wide>
         <PatientForm
           onSaved={(p) => {
             setShowForm(false);
             toast('Patient registered', 'success');
-            load(q, includeArchived);
+            setPage(1);
+            load(q, includeArchived, 1);
           }}
           onCancel={() => setShowForm(false)}
         />

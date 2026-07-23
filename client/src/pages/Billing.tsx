@@ -13,18 +13,27 @@ export default function Billing() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 15;
 
   const load = () => {
     setLoading(true);
     setError('');
     api
-      .get('/invoices', { params: { status: filter || undefined } })
-      .then((r) => setInvoices(r.data))
+      .get('/invoices', { params: { status: filter || undefined, page, pageSize } })
+      .then((r) => {
+        setInvoices(r.data.items);
+        setPages(r.data.pages || 1);
+        setTotal(r.data.total);
+      })
       .catch((e) => setError(errMsg(e)))
       .finally(() => setLoading(false));
   };
+  useEffect(() => { setPage(1); }, [filter]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(load, [filter]);
+  useEffect(load, [filter, page]);
 
   return (
     <div>
@@ -76,7 +85,17 @@ export default function Billing() {
         )}
       </div>
 
-      <InvoiceCreateModal open={creating} onClose={() => setCreating(false)} onCreated={() => { setCreating(false); load(); }} />
+      {!loading && !error && pages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-slate-500">{total} invoices · page {page} of {pages}</p>
+          <div className="flex gap-2">
+            <button className="btn-secondary px-3 py-1.5" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>← Previous</button>
+            <button className="btn-secondary px-3 py-1.5" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Next →</button>
+          </div>
+        </div>
+      )}
+
+      <InvoiceCreateModal open={creating} onClose={() => setCreating(false)} onCreated={() => { setCreating(false); setPage(1); load(); }} />
     </div>
   );
 }
