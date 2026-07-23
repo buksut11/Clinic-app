@@ -81,6 +81,9 @@ async function main() {
   const nurse = await prisma.user.create({
     data: { name: 'Nancy Nurse', email: 'nurse@clinic.com', passwordHash: hash('nurse123'), role: 'NURSE' },
   });
+  const pharmacist = await prisma.user.create({
+    data: { name: 'Paul Pharma', email: 'pharmacy@clinic.com', passwordHash: hash('pharmacy123'), role: 'PHARMACIST' },
+  });
 
   const doctors = [drSmith, drJones];
 
@@ -115,6 +118,58 @@ async function main() {
   await prisma.priceItem.create({ data: { type: 'procedure', name: 'Nebulization', price: 25 } });
   for (const t of labTests) {
     await prisma.priceItem.create({ data: { type: 'labtest', name: t.name, price: t.price } });
+  }
+
+  // Pharmacy inventory
+  const daysFromNow = (d: number) => { const x = new Date(); x.setDate(x.getDate() + d); return x; };
+  const meds = [
+    { name: 'Paracetamol', genericName: 'Acetaminophen', form: 'tablet', strength: '500mg', unit: 'tablet', quantity: 800, reorderLevel: 100, unitPrice: 0.1, expiry: 540, supplier: 'MediSupply Co.' },
+    { name: 'Amoxicillin', genericName: 'Amoxicillin', form: 'capsule', strength: '500mg', unit: 'capsule', quantity: 420, reorderLevel: 80, unitPrice: 0.25, expiry: 400, supplier: 'PharmaDirect' },
+    { name: 'Ibuprofen', genericName: 'Ibuprofen', form: 'tablet', strength: '400mg', unit: 'tablet', quantity: 60, reorderLevel: 100, unitPrice: 0.12, expiry: 300, supplier: 'MediSupply Co.' },
+    { name: 'Amlodipine', genericName: 'Amlodipine', form: 'tablet', strength: '5mg', unit: 'tablet', quantity: 240, reorderLevel: 60, unitPrice: 0.15, expiry: 620, supplier: 'CardioPharm' },
+    { name: 'Metformin', genericName: 'Metformin', form: 'tablet', strength: '850mg', unit: 'tablet', quantity: 500, reorderLevel: 120, unitPrice: 0.09, expiry: 500, supplier: 'DiabaCare' },
+    { name: 'Omeprazole', genericName: 'Omeprazole', form: 'capsule', strength: '20mg', unit: 'capsule', quantity: 15, reorderLevel: 60, unitPrice: 0.2, expiry: 200, supplier: 'GastroMed' },
+    { name: 'Salbutamol Inhaler', genericName: 'Salbutamol', form: 'inhaler', strength: '100mcg', unit: 'inhaler', quantity: 34, reorderLevel: 15, unitPrice: 4.5, expiry: 70, supplier: 'RespiCare' },
+    { name: 'Cetirizine', genericName: 'Cetirizine', form: 'tablet', strength: '10mg', unit: 'tablet', quantity: 300, reorderLevel: 80, unitPrice: 0.08, expiry: 450, supplier: 'AllerFree' },
+    { name: 'Amoxicillin Syrup', genericName: 'Amoxicillin', form: 'syrup', strength: '125mg/5ml', unit: 'bottle', quantity: 22, reorderLevel: 20, unitPrice: 3.2, expiry: 60, supplier: 'PharmaDirect' },
+    { name: 'Ceftriaxone Injection', genericName: 'Ceftriaxone', form: 'injection', strength: '1g', unit: 'vial', quantity: 40, reorderLevel: 25, unitPrice: 2.75, expiry: 380, supplier: 'InjectPharma' },
+    { name: 'Hydrocortisone Cream', genericName: 'Hydrocortisone', form: 'cream', strength: '1%', unit: 'tube', quantity: 55, reorderLevel: 20, unitPrice: 1.9, expiry: 500, supplier: 'DermaMed' },
+    { name: 'Loratadine', genericName: 'Loratadine', form: 'tablet', strength: '10mg', unit: 'tablet', quantity: 0, reorderLevel: 50, unitPrice: 0.11, expiry: 420, supplier: 'AllerFree' },
+    { name: 'Insulin Glargine', genericName: 'Insulin Glargine', form: 'injection', strength: '100U/ml', unit: 'vial', quantity: 18, reorderLevel: 10, unitPrice: 12.5, expiry: 150, supplier: 'DiabaCare' },
+    { name: 'Aspirin', genericName: 'Acetylsalicylic acid', form: 'tablet', strength: '75mg', unit: 'tablet', quantity: 640, reorderLevel: 150, unitPrice: 0.06, expiry: 560, supplier: 'CardioPharm' },
+    { name: 'Eye Drops (Chloramphenicol)', genericName: 'Chloramphenicol', form: 'drops', strength: '0.5%', unit: 'bottle', quantity: 28, reorderLevel: 15, unitPrice: 2.4, expiry: 45, supplier: 'OptiCare' },
+  ];
+  let medSeq = 1;
+  for (const m of meds) {
+    const batchNo = `B${String(1000 + medSeq)}`;
+    const created = await prisma.medication.create({
+      data: {
+        sku: `MED-${pad(medSeq)}`,
+        name: m.name,
+        genericName: m.genericName,
+        form: m.form,
+        strength: m.strength,
+        unit: m.unit,
+        quantity: m.quantity,
+        reorderLevel: m.reorderLevel,
+        unitPrice: m.unitPrice,
+        batchNo,
+        expiryDate: daysFromNow(m.expiry),
+        supplier: m.supplier,
+        location: `Shelf ${String.fromCharCode(65 + (medSeq % 6))}-${medSeq}`,
+        createdById: pharmacist.id,
+      },
+    });
+    if (m.quantity > 0) {
+      await prisma.stockMovement.create({
+        data: {
+          medicationId: created.id, type: 'RECEIVE', quantity: m.quantity, balanceAfter: m.quantity,
+          reason: 'Opening stock', batchNo, expiryDate: daysFromNow(m.expiry),
+          createdById: pharmacist.id, createdByName: pharmacist.name,
+        },
+      });
+    }
+    medSeq++;
   }
 
   // 20 patients
@@ -291,15 +346,61 @@ async function main() {
     });
   }
 
+  // Dispense a few of the earliest prescriptions so the pharmacy has history
+  // and the "pending" queue still has plenty to work through.
+  const allMeds = await prisma.medication.findMany();
+  const findMed = (n: string) => allMeds.find((m) => m.name === n);
+  const pendingRx = await prisma.prescription.findMany({ where: { dispensedAt: null }, orderBy: { createdAt: 'asc' }, take: 4 });
+  let dspSeq = 1;
+  for (const rx of pendingRx) {
+    const para = findMed('Paracetamol');
+    const amox = findMed('Amoxicillin');
+    if (!para || !amox) break;
+    const lines = [
+      { med: para, qty: 15 },
+      { med: amox, qty: 14 },
+    ];
+    const total = Math.round(lines.reduce((s, l) => s + l.med.unitPrice * l.qty, 0) * 100) / 100;
+    await prisma.dispense.create({
+      data: {
+        dispenseNo: `DSP-${year}-${pad(dspSeq)}`,
+        patientId: rx.patientId,
+        prescriptionId: rx.id,
+        dispensedById: pharmacist.id,
+        total,
+        items: {
+          create: lines.map((l) => ({
+            medicationId: l.med.id,
+            name: `${l.med.name} ${l.med.strength}`,
+            quantity: l.qty,
+            unitPrice: l.med.unitPrice,
+            amount: Math.round(l.med.unitPrice * l.qty * 100) / 100,
+          })),
+        },
+      },
+    });
+    for (const l of lines) {
+      const fresh = await prisma.medication.findUnique({ where: { id: l.med.id } });
+      const newQty = (fresh?.quantity ?? 0) - l.qty;
+      await prisma.medication.update({ where: { id: l.med.id }, data: { quantity: newQty } });
+      await prisma.stockMovement.create({
+        data: { medicationId: l.med.id, type: 'DISPENSE', quantity: -l.qty, balanceAfter: newQty, reason: `Dispensed on DSP-${year}-${pad(dspSeq)}`, createdById: pharmacist.id, createdByName: pharmacist.name },
+      });
+    }
+    await prisma.prescription.update({ where: { id: rx.id }, data: { dispensedAt: new Date() } });
+    dspSeq++;
+  }
+
   await prisma.auditLog.create({ data: { userId: admin.id, userName: admin.name, action: 'SEED', details: 'Database seeded with demo data' } });
 
-  console.log(`✅ Seed complete: ${patients.length} patients, ${apptCount} appointments.`);
+  console.log(`✅ Seed complete: ${patients.length} patients, ${apptCount} appointments, ${meds.length} medications.`);
   console.log('\n🔐 Demo logins:');
   console.log('   Admin:        admin@clinic.com / admin123');
   console.log('   Doctor:       dr.smith@clinic.com / doctor123');
   console.log('   Doctor:       dr.jones@clinic.com / doctor123');
   console.log('   Receptionist: reception@clinic.com / reception123');
   console.log('   Nurse:        nurse@clinic.com / nurse123');
+  console.log('   Pharmacist:   pharmacy@clinic.com / pharmacy123');
 }
 
 main()

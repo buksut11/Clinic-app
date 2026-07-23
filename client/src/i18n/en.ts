@@ -5,6 +5,7 @@ export const en: Record<string, string> = {
   'nav.appointments': 'Appointments',
   'nav.queue': "Today's Queue",
   'nav.lab': 'Lab Orders',
+  'nav.pharmacy': 'Pharmacy',
   'nav.billing': 'Billing',
   'nav.reports': 'Reports',
   'nav.settings': 'Settings',

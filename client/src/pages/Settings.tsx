@@ -184,6 +184,7 @@ function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () 
           <select className="input" value={f.role} onChange={(e) => set('role', e.target.value)}>
             <option value="ADMIN">Admin</option><option value="DOCTOR">Doctor</option>
             <option value="RECEPTIONIST">Receptionist</option><option value="NURSE">Nurse</option>
+            <option value="PHARMACIST">Pharmacist</option>
           </select>
         </div>
         {!user && <div><label className="label">Email</label><input className="input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>}

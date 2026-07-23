@@ -10,6 +10,7 @@ import Appointments from './pages/Appointments';
 import Queue from './pages/Queue';
 import Consultation from './pages/Consultation';
 import Lab from './pages/Lab';
+import Pharmacy from './pages/Pharmacy';
 import Billing from './pages/Billing';
 import InvoiceDetail from './pages/InvoiceDetail';
 import Reports from './pages/Reports';
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/queue" element={<Protected><Queue /></Protected>} />
       <Route path="/consultation/:appointmentId" element={<Protected roles={['ADMIN', 'DOCTOR', 'NURSE']}><Consultation /></Protected>} />
       <Route path="/lab" element={<Protected roles={['ADMIN', 'DOCTOR', 'NURSE']}><Lab /></Protected>} />
+      <Route path="/pharmacy" element={<Protected roles={['ADMIN', 'PHARMACIST']}><Pharmacy /></Protected>} />
       <Route path="/billing" element={<Protected roles={['ADMIN', 'RECEPTIONIST']}><Billing /></Protected>} />
       <Route path="/billing/:id" element={<Protected roles={['ADMIN', 'RECEPTIONIST']}><InvoiceDetail /></Protected>} />
       <Route path="/reports" element={<Protected roles={['ADMIN']}><Reports /></Protected>} />

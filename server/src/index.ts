@@ -13,6 +13,7 @@ import documentRoutes from './routes/documents';
 import invoiceRoutes from './routes/invoices';
 import reportRoutes from './routes/reports';
 import settingsRoutes from './routes/settings';
+import pharmacyRoutes from './routes/pharmacy';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -34,6 +35,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/pharmacy', pharmacyRoutes);
 
 // 404 for unknown API routes
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

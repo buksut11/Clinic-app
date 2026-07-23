@@ -23,7 +23,7 @@ function monthBounds(d: Date) {
 // Admin dashboard summary
 router.get(
   '/dashboard',
-  requireRole(Roles.ADMIN, Roles.DOCTOR, Roles.RECEPTIONIST, Roles.NURSE),
+  requireRole(Roles.ADMIN, Roles.DOCTOR, Roles.RECEPTIONIST, Roles.NURSE, Roles.PHARMACIST),
   asyncHandler(async (req, res) => {
     const now = new Date();
     const { start: dStart, end: dEnd } = dayBounds(now);

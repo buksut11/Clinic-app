@@ -19,6 +19,7 @@ non-technical receptionist to use every day.
 | **Vitals** | Weight, height, blood pressure, temperature, pulse — recorded by nurses/doctors |
 | **Prescriptions** | Multi-medicine prescriptions linked to a visit, **printable PDF** with clinic header + doctor signature line |
 | **Lab orders** | Order from a configurable catalog, status workflow (Ordered → Sample collected → Result ready), text results or **file upload** |
+| **Pharmacy** | Medication inventory with batch/expiry, **low-stock & expiry alerts**, receive stock, audited stock adjustments, a full **stock-movement ledger**, and a **dispensing workflow** that fills doctors' prescriptions (auto-matching medicines to inventory) and deducts stock in a transaction. Over-the-counter dispensing and dispensing history included |
 | **Billing** | Configurable price list, invoices auto-filled from a visit, discounts (amount/%) + tax, payments (cash/card/insurance), partial payments & outstanding balances, **PDF invoice/receipt**, daily cash report |
 | **Reports** | Dashboard KPIs, revenue by doctor/service/method, appointment volume, top diagnoses, outstanding balances — all **exportable to CSV** |
 | **Settings (Admin)** | Clinic profile + logo, staff management (create/deactivate/reset password), doctor schedules, price list, lab catalog, **audit log** |
@@ -48,7 +49,7 @@ Clinic-app/
 │   │   ├── utils/          # audit, validation, uploads, PDF helpers
 │   │   └── routes/         # auth, patients, appointments, consultations,
 │   │                       #   vitals, prescriptions, lab, documents,
-│   │                       #   invoices, reports, settings
+│   │                       #   invoices, reports, settings, pharmacy
 │   └── uploads/            # Uploaded documents & logos (git-ignored)
 └── client/                 # React app
     └── src/
@@ -113,10 +114,13 @@ On the login screen you can **click any demo card to auto-fill** the fields.
 | **Doctor** (Pediatrics) | `dr.jones@clinic.com` | `doctor123` |
 | **Receptionist** | `reception@clinic.com` | `reception123` |
 | **Nurse** | `nurse@clinic.com` | `nurse123` |
+| **Pharmacist** | `pharmacy@clinic.com` | `pharmacy123` |
 
 Seed data also includes: 1 clinic profile, 20 sample patients, this week's
 appointments (with vitals, consultations, prescriptions and invoices for completed
-ones), a price list, and a lab-test catalog — so you can explore immediately.
+ones), a price list, a lab-test catalog, and a **pharmacy inventory of 15
+medications** (some deliberately low-stock or expiring soon) with a few
+prescriptions already dispensed — so you can explore immediately.
 
 ---
 

@@ -14,7 +14,7 @@ datasource db {
 // Users & Auth
 // ----------------------------------------------------------------------------
 
-// Role values (SQLite has no enums): ADMIN | DOCTOR | RECEPTIONIST | NURSE
+// Role values (SQLite has no enums): ADMIN | DOCTOR | RECEPTIONIST | NURSE | PHARMACIST
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -39,6 +39,8 @@ model User {
   documentsUploaded     Document[]
   paymentsTaken         Payment[]
   priceItems            PriceItem[]
+  dispenses             Dispense[]
+  stockMovements        StockMovement[]
 }
 
 // ----------------------------------------------------------------------------
@@ -88,6 +90,7 @@ model Patient {
   invoices      Invoice[]
   documents     Document[]
   vitals        Vitals[]
+  dispenses     Dispense[]
 }
 
 // ----------------------------------------------------------------------------
@@ -196,17 +199,19 @@ model Vitals {
 // ----------------------------------------------------------------------------
 
 model Prescription {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   patientId      String
   doctorId       String
   consultationId String?
   notes          String?
-  createdAt      DateTime @default(now())
+  dispensedAt    DateTime? // set when the pharmacy dispenses this prescription
+  createdAt      DateTime  @default(now())
 
   patient      Patient            @relation(fields: [patientId], references: [id])
   doctor       User               @relation(fields: [doctorId], references: [id])
   consultation Consultation?      @relation(fields: [consultationId], references: [id])
   items        PrescriptionItem[]
+  dispenses    Dispense[]
 }
 
 model PrescriptionItem {
@@ -332,6 +337,87 @@ model Document {
 
   patient    Patient @relation(fields: [patientId], references: [id])
   uploadedBy User?   @relation(fields: [uploadedById], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Pharmacy
+// ----------------------------------------------------------------------------
+
+// A medication held in the pharmacy inventory.
+model Medication {
+  id           String   @id @default(cuid())
+  sku          String   @unique // e.g. MED-00001
+  name         String // brand/display name, e.g. "Amoxil"
+  genericName  String? // e.g. "Amoxicillin"
+  form         String   @default("tablet") // tablet | capsule | syrup | injection | cream | drops | inhaler | other
+  strength     String? // e.g. "500mg"
+  unit         String   @default("unit") // dispensing unit: tablet | capsule | bottle | vial | tube ...
+  quantity     Int      @default(0) // current quantity in stock
+  reorderLevel Int      @default(20) // low-stock threshold
+  unitPrice    Float    @default(0)
+  batchNo      String?
+  expiryDate   DateTime?
+  supplier     String?
+  location     String? // shelf/bin
+  isActive     Boolean  @default(true)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  movements    StockMovement[]
+  dispenseItems DispenseItem[]
+
+  @@index([name])
+}
+
+// An immutable ledger entry for every stock change (receive / dispense / adjust).
+model StockMovement {
+  id           String   @id @default(cuid())
+  medicationId String
+  type         String // RECEIVE | DISPENSE | ADJUST
+  quantity     Int // signed: positive adds stock, negative removes
+  balanceAfter Int // stock level after this movement
+  reason       String?
+  batchNo      String?
+  expiryDate   DateTime?
+  createdById  String?
+  createdByName String?
+  createdAt    DateTime @default(now())
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation(fields: [createdById], references: [id])
+
+  @@index([medicationId, createdAt])
+}
+
+// A dispensing transaction (fills a prescription or an over-the-counter sale).
+model Dispense {
+  id             String   @id @default(cuid())
+  dispenseNo     String   @unique // e.g. DSP-2026-00001
+  patientId      String?
+  prescriptionId String?
+  dispensedById  String?
+  notes          String?
+  total          Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
+  dispensedBy  User?         @relation(fields: [dispensedById], references: [id])
+  items        DispenseItem[]
+}
+
+model DispenseItem {
+  id           String @id @default(cuid())
+  dispenseId   String
+  medicationId String
+  name         String // snapshot of the medication name at dispense time
+  quantity     Int
+  unitPrice    Float  @default(0)
+  amount       Float  @default(0)
+
+  dispense   Dispense   @relation(fields: [dispenseId], references: [id], onDelete: Cascade)
+  medication Medication @relation(fields: [medicationId], references: [id])
 }
 
 // ----------------------------------------------------------------------------

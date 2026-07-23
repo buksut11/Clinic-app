@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'DOCTOR' | 'RECEPTIONIST' | 'NURSE';
+export type Role = 'ADMIN' | 'DOCTOR' | 'RECEPTIONIST' | 'NURSE' | 'PHARMACIST';
 
 export interface User {
   id: string;
@@ -196,6 +196,78 @@ export interface AuditLog {
   entityId?: string | null;
   details?: string | null;
   createdAt: string;
+}
+
+export interface Medication {
+  id: string;
+  sku: string;
+  name: string;
+  genericName?: string | null;
+  form: string;
+  strength?: string | null;
+  unit: string;
+  quantity: number;
+  reorderLevel: number;
+  unitPrice: number;
+  batchNo?: string | null;
+  expiryDate?: string | null;
+  supplier?: string | null;
+  location?: string | null;
+  isActive: boolean;
+  movements?: StockMovement[];
+}
+
+export interface StockMovement {
+  id: string;
+  type: 'RECEIVE' | 'DISPENSE' | 'ADJUST';
+  quantity: number;
+  balanceAfter: number;
+  reason?: string | null;
+  batchNo?: string | null;
+  expiryDate?: string | null;
+  createdByName?: string | null;
+  createdAt: string;
+}
+
+export interface DispenseItemRow {
+  id?: string;
+  medicationId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export interface Dispense {
+  id: string;
+  dispenseNo: string;
+  patientId?: string | null;
+  prescriptionId?: string | null;
+  notes?: string | null;
+  total: number;
+  createdAt: string;
+  items: DispenseItemRow[];
+  patient?: { fullName: string; patientNo: string } | null;
+  dispensedBy?: { name: string } | null;
+}
+
+export interface PharmacyStats {
+  totalItems: number;
+  lowStock: number;
+  outOfStock: number;
+  expiringSoon: number;
+  stockValue: number;
+  pendingRx: number;
+  dispensedToday: number;
+}
+
+export interface PendingPrescription {
+  id: string;
+  createdAt: string;
+  notes?: string | null;
+  items: PrescriptionItem[];
+  patient: { id: string; fullName: string; patientNo: string; allergies?: string | null };
+  doctor?: { name: string };
 }
 
 export interface Clinic {

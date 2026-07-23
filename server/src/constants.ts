@@ -5,9 +5,18 @@ export const Roles = {
   DOCTOR: 'DOCTOR',
   RECEPTIONIST: 'RECEPTIONIST',
   NURSE: 'NURSE',
+  PHARMACIST: 'PHARMACIST',
 } as const;
 export type Role = (typeof Roles)[keyof typeof Roles];
 export const ALL_ROLES = Object.values(Roles);
+
+// Medication forms and stock-movement types
+export const MED_FORMS = ['tablet', 'capsule', 'syrup', 'injection', 'cream', 'drops', 'inhaler', 'other'];
+export const StockMovementTypes = {
+  RECEIVE: 'RECEIVE',
+  DISPENSE: 'DISPENSE',
+  ADJUST: 'ADJUST',
+} as const;
 
 export const AppointmentStatuses = {
   SCHEDULED: 'SCHEDULED',

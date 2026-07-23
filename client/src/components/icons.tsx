@@ -53,6 +53,12 @@ export const IconPlus = ({ className = base }: P) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+export const IconPharmacy = ({ className = base }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4.5 6.5 A2.5 2.5 0 0 1 8 6.5 l9.5 9.5 a2.5 2.5 0 0 1-3.5 3.5 Z" />
+    <path d="m9 6 5 5" /><path d="M12 3v3M10.5 4.5h3" />
+  </svg>
+);
 export const IconLogout = ({ className = base }: P) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" />

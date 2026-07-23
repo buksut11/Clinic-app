@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { Role } from '../lib/types';
 import {
   IconDashboard, IconPatients, IconCalendar, IconQueue, IconLab,
-  IconBilling, IconReports, IconSettings, IconSearch, IconLogout,
+  IconBilling, IconReports, IconSettings, IconSearch, IconLogout, IconPharmacy,
 } from './icons';
 
 interface NavItem {
@@ -16,11 +16,12 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: '/', key: 'nav.dashboard', icon: <IconDashboard />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'] },
-  { to: '/patients', key: 'nav.patients', icon: <IconPatients />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'] },
+  { to: '/', key: 'nav.dashboard', icon: <IconDashboard />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE', 'PHARMACIST'] },
+  { to: '/patients', key: 'nav.patients', icon: <IconPatients />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE', 'PHARMACIST'] },
   { to: '/appointments', key: 'nav.appointments', icon: <IconCalendar />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST'] },
   { to: '/queue', key: 'nav.queue', icon: <IconQueue />, roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'] },
   { to: '/lab', key: 'nav.lab', icon: <IconLab />, roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
+  { to: '/pharmacy', key: 'nav.pharmacy', icon: <IconPharmacy />, roles: ['ADMIN', 'PHARMACIST'] },
   { to: '/billing', key: 'nav.billing', icon: <IconBilling />, roles: ['ADMIN', 'RECEPTIONIST'] },
   { to: '/reports', key: 'nav.reports', icon: <IconReports />, roles: ['ADMIN'] },
   { to: '/settings', key: 'nav.settings', icon: <IconSettings />, roles: ['ADMIN'] },

@@ -75,6 +75,40 @@ The nurse prepares patients before they see the doctor.
 
 ---
 
+## 💊 Pharmacist — "dispensing & stock"
+
+The pharmacist fills prescriptions and keeps medication stock accurate.
+
+**A typical day:**
+1. Open **Pharmacy → Dispense**. Every prescription a doctor has written that hasn't
+   been dispensed yet appears as a card, showing the patient, the doctor, the
+   medicines — and the patient's **allergies highlighted in red**.
+2. Click **Dispense** on a card. The system **auto-matches** the prescribed medicines
+   to items in your inventory and pre-fills them. Check each quantity against the
+   prescription (the screen shows how much stock is available and won't let you
+   dispense more than you have), add any extra items by searching the inventory, then
+   click **Confirm & dispense**. Stock is deducted automatically and the prescription
+   moves out of the pending queue.
+3. For a walk-in sale with no prescription, use **Over-the-counter dispense**.
+4. Switch to **Pharmacy → Inventory** to manage stock. Each medication shows its
+   current quantity (green = fine, amber = at/below reorder level, red = out), price
+   and expiry (expiring-soon items are flagged in red). The stat cards at the top
+   summarise low-stock, expiring-soon and total stock value at a glance.
+   - **Receive** — when a delivery arrives, add the quantity (with batch number and
+     expiry). 
+   - **Adjust** — correct a stock count, or write off damaged/expired stock (a reason
+     is required).
+   - **Ledger** — see every movement (received, dispensed, adjusted) for that
+     medication, with running balances — a full audit trail.
+   - **Add medication** — register a new product with its form, strength, unit,
+     reorder level and opening stock.
+5. **Pharmacy → History** lists every dispense with its items and totals.
+
+> The pharmacist can also look up any patient's record (to check history and
+> allergies) but does not handle appointments, billing or clinic settings.
+
+---
+
 ## 🩺 Doctor — "consultations & prescriptions"
 
 The doctor sees their own schedule and patients, and writes the medical record.
@@ -108,9 +142,9 @@ Receptionist books  →  Patient arrives, Receptionist checks in
    Appointment              Nurse records vitals
         ↓                         ↓
    Doctor consults  →  writes notes, prescription, lab orders  →  Completes visit
-        ↓
-   Receptionist creates invoice (auto-filled)  →  takes payment  →  prints receipt
-        ↓
+        ↓                              ↓
+   Receptionist bills & takes payment  Pharmacist dispenses the prescription
+        ↓                              (stock deducted automatically)
    Admin reviews reports, dashboard and audit log
 ```
 

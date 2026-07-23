@@ -7,6 +7,7 @@ export const ar: Record<string, string> = {
   'nav.appointments': 'المواعيد',
   'nav.queue': 'قائمة اليوم',
   'nav.lab': 'طلبات المختبر',
+  'nav.pharmacy': 'الصيدلية',
   'nav.billing': 'الفواتير',
   'nav.reports': 'التقارير',
   'nav.settings': 'الإعدادات',
