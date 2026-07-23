@@ -139,18 +139,20 @@ CLIENT_ORIGIN="http://localhost:5173"
 
 > **Change `JWT_SECRET` before any real deployment.**
 
-### Switching to PostgreSQL
+### Hosting on Supabase / PostgreSQL
 
-1. In `server/prisma/schema.prisma`, change the datasource:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-2. Set `DATABASE_URL` to your Postgres connection string.
-3. The schema uses `String` fields (instead of native enums) for portability, so no
-   other changes are needed. Run `npm run setup` again.
+A ready-to-use Postgres path is included — the app code doesn't change:
+
+- **`server/prisma/schema.postgres.prisma`** — the Postgres schema (mirrors the
+  SQLite one; only the datasource differs).
+- **`supabase/schema.sql`** — the complete table DDL (all 22 tables, indexes and
+  foreign keys) to paste into the Supabase SQL Editor.
+- **`supabase/enable-rls.sql`** — optional Row Level Security hardening.
+
+Full step-by-step instructions are in **[SUPABASE.md](SUPABASE.md)**. In short:
+set `DATABASE_URL` + `DIRECT_URL` to your Supabase connection strings, run
+`supabase/schema.sql` (or `npm run prisma:pg:push`), then
+`npm run setup:supabase` to generate the client and seed demo data.
 
 ---
 
