@@ -122,7 +122,9 @@ ones), a price list, and a lab-test catalog — so you can explore immediately.
 
 ## ⚙️ Configuration
 
-Backend config lives in `server/.env` (a working default is committed for local dev):
+Backend config lives in `server/.env`. It is created automatically from
+`server/.env.example` the first time you run `npm run setup` or `npm run dev`, with
+these working local-dev defaults:
 
 ```
 DATABASE_URL="file:./dev.db"
