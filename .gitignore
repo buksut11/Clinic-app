@@ -13,3 +13,4 @@ server/.env
 
 # Client
 client/dist/
+*.tsbuildinfo

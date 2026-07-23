@@ -1,0 +1,13 @@
+{
+  "name": "clinic-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Clinic Management System — root helper scripts for the server + client workspaces",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "setup": "cd server && npm run setup",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "cd server && npm run build && cd ../client && npm run build"
+  }
+}
