@@ -19,9 +19,9 @@ export default function Settings() {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold text-slate-800">Settings</h1>
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="segmented mb-5 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium ${tab === t.key ? 'border-b-2 border-brand-600 text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}>
+          <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? 'is-active' : ''}>
             {t.label}
           </button>
         ))}

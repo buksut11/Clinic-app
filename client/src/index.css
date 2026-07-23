@@ -2,53 +2,205 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   Liquid Glass design system — Apple / iOS-inspired frosted translucency
+   ========================================================================== */
+
 html,
 body,
 #root {
   height: 100%;
 }
+
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  @apply text-slate-800;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+
+  /* Ambient, colourful backdrop so frosted surfaces visibly refract light */
+  background-color: #e7edf5;
+  background-image:
+    radial-gradient(1200px 720px at 6% -8%, rgba(45, 212, 191, 0.45), transparent 58%),
+    radial-gradient(1050px 680px at 102% -2%, rgba(99, 102, 241, 0.38), transparent 55%),
+    radial-gradient(950px 720px at 48% 112%, rgba(56, 189, 248, 0.34), transparent 55%),
+    radial-gradient(820px 640px at 100% 100%, rgba(244, 114, 182, 0.30), transparent 55%),
+    radial-gradient(700px 560px at 30% 60%, rgba(129, 140, 248, 0.18), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
-/* Reusable component classes */
+/* Headings feel tighter, more "SF Display" */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Subtle, unobtrusive scrollbars (macOS-like) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.32);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+  background-clip: content-box;
+}
+
 @layer components {
+  /* ---- Glass surfaces ------------------------------------------------- */
+  .glass {
+    background: rgba(255, 255, 255, 0.52);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(30px) saturate(190%);
+    -webkit-backdrop-filter: blur(30px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
+  /* ---- Buttons (pill, tactile) --------------------------------------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97];
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white;
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(13, 148, 136, 0.32);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #16c3b0 0%, #0f9c8f 100%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04), 0 8px 22px rgba(13, 148, 136, 0.4);
   }
   .btn-secondary {
-    @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
+    @apply btn text-slate-700;
+    background: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.85);
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn text-white;
+    background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(225, 29, 72, 0.3);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: linear-gradient(180deg, #fb5069 0%, #e11d48 100%);
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100;
+    @apply btn text-slate-600;
   }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(148, 163, 184, 0.16);
+  }
+
+  /* ---- Cards ---------------------------------------------------------- */
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(26px) saturate(190%);
+    -webkit-backdrop-filter: blur(26px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 36px rgba(15, 23, 42, 0.09);
   }
+
+  /* ---- Inputs --------------------------------------------------------- */
   .input {
-    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+    @apply w-full rounded-xl px-3.5 py-2.5 text-sm text-slate-800 transition;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.35);
   }
+  .input::placeholder {
+    @apply text-slate-400;
+  }
+  .input:focus {
+    @apply outline-none;
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(20, 184, 166, 0.7);
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18);
+  }
+  select.input {
+    /* keep native chevron readable on the translucent field */
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.25rem;
+  }
+  [dir='rtl'] select.input {
+    background-position: left 0.75rem center;
+    padding-right: 0.875rem;
+    padding-left: 2.25rem;
+  }
+
   .label {
-    @apply block text-xs font-semibold text-slate-600 mb-1;
+    @apply block text-xs font-semibold text-slate-500 mb-1.5;
   }
+
+  /* ---- Badges (soft translucent tint) -------------------------------- */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
   }
+
+  /* ---- Tables --------------------------------------------------------- */
   .th {
     @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
   }
   .td {
     @apply px-4 py-3 text-sm text-slate-700;
   }
+
+  /* Tables live inside frosted cards — keep headers/hovers translucent so the
+     glass shows through instead of flat opaque fills. */
+  .card thead {
+    background: rgba(255, 255, 255, 0.4);
+  }
+  .card tbody tr:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  /* ---- iOS segmented control (for tab bars) --------------------------- */
+  .segmented {
+    @apply inline-flex gap-1 rounded-full p-1;
+    background: rgba(120, 130, 150, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .segmented button {
+    @apply rounded-full px-4 py-1.5 text-sm font-semibold text-slate-500 transition-all duration-200;
+  }
+  .segmented button.is-active {
+    @apply text-slate-900;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  }
 }
 
 [dir='rtl'] .rtl-flip {
   transform: scaleX(-1);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }

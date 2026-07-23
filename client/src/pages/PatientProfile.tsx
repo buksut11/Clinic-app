@@ -145,15 +145,11 @@ export default function PatientProfile() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="segmented mb-5 flex-wrap">
         {tabs.map((tt) => (
-          <button
-            key={tt.key}
-            onClick={() => setTab(tt.key)}
-            className={`px-4 py-2 text-sm font-medium ${tab === tt.key ? 'border-b-2 border-brand-600 text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}
-          >
+          <button key={tt.key} onClick={() => setTab(tt.key)} className={tab === tt.key ? 'is-active' : ''}>
             {tt.label}
-            {tt.count != null && <span className="ms-1.5 rounded-full bg-slate-100 px-1.5 text-xs text-slate-500">{tt.count}</span>}
+            {tt.count != null && <span className="ms-1.5 rounded-full bg-slate-500/15 px-1.5 text-xs">{tt.count}</span>}
           </button>
         ))}
       </div>
