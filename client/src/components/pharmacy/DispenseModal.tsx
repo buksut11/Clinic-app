@@ -27,7 +27,9 @@ export default function DispenseModal({
   const [lines, setLines] = useState<Line[]>([]);
   const [search, setSearch] = useState('');
   const [notes, setNotes] = useState('');
-  const [chargeToInvoice, setChargeToInvoice] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [payment, setPayment] = useState<'cash' | 'card' | 'invoice'>('cash');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,6 +79,9 @@ export default function DispenseModal({
 
   const total = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
   const hasStockIssue = lines.some((l) => l.quantity > l.available || l.quantity < 1);
+  // Invoicing charges a registered patient; only available when a prescription (patient) is linked.
+  const canInvoice = !!prescription;
+  const effectivePayment = payment === 'invoice' && !canInvoice ? 'cash' : payment;
 
   const submit = async () => {
     if (lines.length === 0) { toast('Add at least one medication', 'error'); return; }
@@ -86,11 +91,13 @@ export default function DispenseModal({
       const { data } = await api.post('/pharmacy/dispense', {
         patientId: prescription?.patient.id || null,
         prescriptionId: prescription?.id || null,
+        customerName: prescription ? null : customerName || null,
+        customerPhone: prescription ? null : customerPhone || null,
+        paymentMethod: effectivePayment,
         notes: notes || null,
-        chargeToInvoice: chargeToInvoice && !!prescription,
         items: lines.map((l) => ({ medicationId: l.medicationId, quantity: l.quantity })),
       });
-      toast(data.invoice ? `Dispensed — invoice ${data.invoice.invoiceNo} raised` : 'Dispensed successfully', 'success');
+      toast(data.invoice ? `Sold — invoice ${data.invoice.invoiceNo} raised` : 'Sale recorded successfully', 'success');
       onDispensed();
     } catch (err) {
       toast(errMsg(err), 'error');
@@ -100,7 +107,7 @@ export default function DispenseModal({
   };
 
   return (
-    <Modal open onClose={onClose} title={prescription ? `Dispense — ${prescription.patient.fullName}` : 'Over-the-counter dispense'} wide>
+    <Modal open onClose={onClose} title={prescription ? `Sell / dispense — ${prescription.patient.fullName}` : 'Sell medicines (walk-in customer)'} wide>
       {/* Prescription reference */}
       {prescription && (
         <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -162,23 +169,46 @@ export default function DispenseModal({
         </div>
       )}
 
+      {/* Walk-in customer details (only when there is no linked prescription/patient) */}
+      {!prescription && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div><label className="label">Customer name (optional)</label><input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Walk-in customer" /></div>
+          <div><label className="label">Customer phone (optional)</label><input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Contact number" /></div>
+        </div>
+      )}
+
+      {/* Payment method */}
+      <div className="mt-3">
+        <label className="label">Payment method</label>
+        <div className="flex flex-wrap gap-2">
+          {(['cash', 'card', 'invoice'] as const).map((m) => {
+            const disabled = m === 'invoice' && !canInvoice;
+            return (
+              <button
+                key={m}
+                type="button"
+                disabled={disabled}
+                onClick={() => setPayment(m)}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm capitalize ${payment === m && !disabled ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-600'} ${disabled ? 'cursor-not-allowed opacity-40' : ''}`}
+              >
+                {m === 'invoice' ? 'Charge to patient invoice' : m}
+              </button>
+            );
+          })}
+        </div>
+        {payment === 'invoice' && canInvoice && <p className="mt-1 text-xs text-slate-400">Raises an unpaid invoice on the patient's account that reception can collect.</p>}
+      </div>
+
       <div className="mt-3">
         <label className="label">Notes (optional)</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Counselled patient on dosage" />
       </div>
 
-      {prescription && (
-        <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={chargeToInvoice} onChange={(e) => setChargeToInvoice(e.target.checked)} />
-          Charge these medicines to the patient (raises an unpaid invoice reception can collect)
-        </label>
-      )}
-
       <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
         <div className="text-lg font-bold text-slate-800">Total: {money(total)}</div>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={submit} disabled={saving || lines.length === 0 || hasStockIssue}>{saving ? 'Dispensing…' : 'Confirm & dispense'}</button>
+          <button className="btn-primary" onClick={submit} disabled={saving || lines.length === 0 || hasStockIssue}>{saving ? 'Saving…' : 'Confirm sale'}</button>
         </div>
       </div>
     </Modal>

@@ -75,34 +75,42 @@ The nurse prepares patients before they see the doctor.
 
 ---
 
-## 💊 Pharmacist — "dispensing & stock"
+## 💊 Pharmacist — "buy, sell & stock"
 
-The pharmacist fills prescriptions and keeps medication stock accurate.
+The pharmacist buys medication stock from suppliers, sells it to patients and
+walk-in customers, and keeps the inventory accurate.
 
 **A typical day:**
-1. Open **Pharmacy → Dispense**. Every prescription a doctor has written that hasn't
+1. Open **Pharmacy → Sell**. Every prescription a doctor has written that hasn't
    been dispensed yet appears as a card, showing the patient, the doctor, the
    medicines — and the patient's **allergies highlighted in red**.
 2. Click **Dispense** on a card. The system **auto-matches** the prescribed medicines
    to items in your inventory and pre-fills them. Check each quantity against the
    prescription (the screen shows how much stock is available and won't let you
-   dispense more than you have), add any extra items by searching the inventory, then
-   click **Confirm & dispense**. Stock is deducted automatically and the prescription
+   dispense more than you have), add any extra items by searching the inventory,
+   choose a **payment method** (cash, card, or charge to the patient's invoice), then
+   click **Confirm sale**. Stock is deducted automatically and the prescription
    moves out of the pending queue.
-3. For a walk-in sale with no prescription, use **Over-the-counter dispense**.
-4. Switch to **Pharmacy → Inventory** to manage stock. Each medication shows its
-   current quantity (green = fine, amber = at/below reorder level, red = out), price
-   and expiry (expiring-soon items are flagged in red). The stat cards at the top
-   summarise low-stock, expiring-soon and total stock value at a glance.
-   - **Receive** — when a delivery arrives, add the quantity (with batch number and
-     expiry). 
+3. For a walk-in sale with no prescription, use **Sell to walk-in customer** — you can
+   record the customer's name and phone and take payment by cash or card.
+4. **Pharmacy → Buy** records purchases from suppliers. Click **Buy stock**, add the
+   medicines you received with their **quantity, cost price, batch and expiry**, and a
+   supplier + bill reference. Stock is increased, each item's cost price is updated so
+   **profit margins stay accurate**, and the purchase is kept in the history list.
+5. Switch to **Pharmacy → Inventory** to manage stock. Each medication shows its
+   current quantity (green = fine, amber = at/below reorder level, red = out), its
+   **cost price, selling price and margin**, and expiry (expiring-soon items are
+   flagged in red). The stat cards at the top summarise today's sales, profit and
+   purchases, plus low-stock and expiring-soon counts at a glance.
+   - **Receive** — a quick way to add quantity for a delivery (with batch and expiry).
    - **Adjust** — correct a stock count, or write off damaged/expired stock (a reason
      is required).
-   - **Ledger** — see every movement (received, dispensed, adjusted) for that
+   - **Ledger** — see every movement (received, purchased, sold, adjusted) for that
      medication, with running balances — a full audit trail.
    - **Add medication** — register a new product with its form, strength, unit,
-     reorder level and opening stock.
-5. **Pharmacy → History** lists every dispense with its items and totals.
+     cost/selling price, reorder level and opening stock.
+6. **Pharmacy → History** lists every sale with its buyer, payment method, items and
+   totals.
 
 > The pharmacist can also look up any patient's record (to check history and
 > allergies) but does not handle appointments, billing or clinic settings.

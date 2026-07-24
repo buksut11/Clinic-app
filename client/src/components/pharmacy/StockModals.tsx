@@ -98,7 +98,11 @@ function MovementsModal({ med, onClose }: { med: Medication; onClose: () => void
     api.get(`/pharmacy/medications/${med.id}`).then((r) => setMovements(r.data.movements || [])).finally(() => setLoading(false));
   }, [med.id]);
 
-  const badge = (t: string) => t === 'RECEIVE' ? 'bg-green-100 text-green-700' : t === 'DISPENSE' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+  const badge = (t: string) =>
+    t === 'RECEIVE' ? 'bg-green-100 text-green-700'
+    : t === 'PURCHASE' ? 'bg-teal-100 text-teal-700'
+    : t === 'DISPENSE' ? 'bg-blue-100 text-blue-700'
+    : 'bg-amber-100 text-amber-700';
 
   return (
     <Modal open onClose={onClose} title={`Stock ledger — ${med.name}`} wide>

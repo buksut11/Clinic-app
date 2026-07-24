@@ -41,6 +41,7 @@ model User {
   priceItems            PriceItem[]
   dispenses             Dispense[]
   stockMovements        StockMovement[]
+  purchases             Purchase[]
 }
 
 // ----------------------------------------------------------------------------
@@ -354,7 +355,8 @@ model Medication {
   unit         String   @default("unit") // dispensing unit: tablet | capsule | bottle | vial | tube ...
   quantity     Int      @default(0) // current quantity in stock
   reorderLevel Int      @default(20) // low-stock threshold
-  unitPrice    Float    @default(0)
+  unitPrice    Float    @default(0) // selling price per unit
+  costPrice    Float    @default(0) // purchase (buy) price per unit
   batchNo      String?
   expiryDate   DateTime?
   supplier     String?
@@ -364,8 +366,9 @@ model Medication {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  movements    StockMovement[]
+  movements     StockMovement[]
   dispenseItems DispenseItem[]
+  purchaseItems PurchaseItem[]
 
   @@index([name])
 }
@@ -374,7 +377,7 @@ model Medication {
 model StockMovement {
   id           String   @id @default(cuid())
   medicationId String
-  type         String // RECEIVE | DISPENSE | ADJUST
+  type         String // RECEIVE | DISPENSE | ADJUST | PURCHASE
   quantity     Int // signed: positive adds stock, negative removes
   balanceAfter Int // stock level after this movement
   reason       String?
@@ -394,11 +397,15 @@ model StockMovement {
 model Dispense {
   id             String   @id @default(cuid())
   dispenseNo     String   @unique // e.g. DSP-2026-00001
-  patientId      String?
+  patientId      String? // set when selling to a registered patient
   prescriptionId String?
   dispensedById  String?
+  customerName   String? // walk-in customer name (when no patient is linked)
+  customerPhone  String? // walk-in customer phone
+  paymentMethod  String   @default("cash") // cash | card | invoice
   notes          String?
-  total          Float    @default(0)
+  costTotal      Float    @default(0) // cost of goods sold (for profit reporting)
+  total          Float    @default(0) // amount charged to the buyer
   createdAt      DateTime @default(now())
 
   patient      Patient?      @relation(fields: [patientId], references: [id])
@@ -417,6 +424,36 @@ model DispenseItem {
   amount       Float  @default(0)
 
   dispense   Dispense   @relation(fields: [dispenseId], references: [id], onDelete: Cascade)
+  medication Medication @relation(fields: [medicationId], references: [id])
+}
+
+// A purchase (buying stock from a supplier). Increases inventory and records cost.
+model Purchase {
+  id          String   @id @default(cuid())
+  purchaseNo  String   @unique // e.g. PUR-2026-00001
+  supplier    String?
+  invoiceRef  String? // supplier's invoice / bill number
+  notes       String?
+  total       Float    @default(0) // total spent on this purchase
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy User?          @relation(fields: [createdById], references: [id])
+  items     PurchaseItem[]
+}
+
+model PurchaseItem {
+  id           String    @id @default(cuid())
+  purchaseId   String
+  medicationId String
+  name         String // snapshot of the medication name at purchase time
+  quantity     Int
+  costPrice    Float     @default(0) // cost per unit
+  amount       Float     @default(0) // quantity * costPrice
+  batchNo      String?
+  expiryDate   DateTime?
+
+  purchase   Purchase   @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   medication Medication @relation(fields: [medicationId], references: [id])
 }
 
