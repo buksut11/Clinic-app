@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import path from 'path';
+import fs from 'fs';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -55,6 +57,21 @@ app.use('/api/pharmacy', pharmacyRoutes);
 // 404 for unknown API routes
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
+// ---------------------------------------------------------------------------
+// Single-port mode: if the React app has been built, serve it from this same
+// server so the whole app runs at http://localhost:<PORT> — no second process,
+// no CORS, no proxy. (In dev you instead run Vite on :5173.)
+// Resolves to <repo>/client/dist whether running via tsx (src) or compiled (dist).
+// ---------------------------------------------------------------------------
+const clientDist = path.resolve(__dirname, '../../client/dist');
+const hasClientBuild = fs.existsSync(path.join(clientDist, 'index.html'));
+
+if (hasClientBuild) {
+  app.use(express.static(clientDist));
+  // SPA fallback: send index.html for any non-API GET so client-side routes work.
+  app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
+
 // Central error handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -71,5 +88,9 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`✅ Clinic API running on http://localhost:${PORT}`);
+  if (hasClientBuild) {
+    console.log(`✅ Clinic app running on http://localhost:${PORT}  (UI + API on one port)`);
+  } else {
+    console.log(`✅ Clinic API running on http://localhost:${PORT}  (run the client with: cd client && npm run dev)`);
+  }
 });

@@ -65,40 +65,50 @@ Clinic-app/
 ## 🚀 Getting started
 
 You need **Node.js 18+** (built and tested on Node 22). No external database required —
-SQLite runs from a local file.
+SQLite runs from a local file, so there's nothing to install or configure.
 
-### 1. Backend
+### ✅ Easiest way — one app on one port (recommended)
 
-```bash
-cd server
-npm install
-npm run setup      # generates Prisma client, creates the DB, seeds demo data
-npm run dev        # starts the API on http://localhost:4000
-```
-
-`npm run setup` is a one-time command equal to
-`prisma generate && prisma db push && tsx prisma/seed.ts`.
-To re-seed later (wipes and repopulates demo data): `npm run seed`.
-
-### 2. Frontend (in a second terminal)
+Run these three commands from the **project root**, then open one URL:
 
 ```bash
-cd client
-npm install
-npm run dev        # starts the app on http://localhost:5173
+npm run setup      # installs everything, creates + seeds the database, builds the UI
+npm start          # serves the whole app at http://localhost:4000
 ```
 
-Open **http://localhost:5173** and log in with one of the demo accounts below.
-The Vite dev server proxies `/api` to the backend automatically.
+Open **http://localhost:4000** and log in with a demo account below. In this mode the
+Express server serves both the API **and** the built React UI on a single port — no
+second terminal, no CORS, no proxy. This is the simplest way to run it locally.
 
-### Production build
+> Re-run `npm start` any time. Only re-run `npm run setup` after pulling new code or to
+> reset the demo data.
+
+### 🛠️ Development mode (hot reload, two ports)
+
+For editing the code with instant refresh:
 
 ```bash
-# Backend
-cd server && npm run build && npm start
-# Frontend
-cd client && npm run build   # outputs static files to client/dist
+npm run install:all   # first time only
+npm run dev           # API on :4000 and Vite UI on :5173 together (one command)
 ```
+
+Open **http://localhost:5173**. Vite proxies `/api` to the backend automatically, and
+both the server and UI reload on save.
+
+<details>
+<summary>Prefer to run each part by hand?</summary>
+
+```bash
+# Terminal 1 — backend
+cd server && npm install && npm run setup && npm run dev   # http://localhost:4000
+
+# Terminal 2 — frontend
+cd client && npm install && npm run dev                     # http://localhost:5173
+```
+</details>
+
+`npm run setup` (in `server/`) equals `prisma generate && prisma db push && tsx
+prisma/seed.ts`. To re-seed later (wipes and repopulates demo data): `npm run seed`.
 
 ---
 
