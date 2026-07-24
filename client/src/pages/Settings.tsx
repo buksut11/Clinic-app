@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../lib/api';
 import { Clinic, User, PriceItem, LabTest, AuditLog } from '../lib/types';
-import { Spinner, Modal, useToast, useConfirm } from '../components/ui';
+import { Spinner, Modal, useToast, useConfirm, Select, TimePicker } from '../components/ui';
 import { fmtDateTime, money } from '../lib/format';
 
 type Tab = 'clinic' | 'staff' | 'schedules' | 'prices' | 'lab' | 'audit';
@@ -181,11 +181,18 @@ function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () 
       <div className="grid grid-cols-2 gap-3">
         <div><label className="label">Name</label><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
         <div><label className="label">Role</label>
-          <select className="input" value={f.role} onChange={(e) => set('role', e.target.value)}>
-            <option value="ADMIN">Admin</option><option value="DOCTOR">Doctor</option>
-            <option value="RECEPTIONIST">Receptionist</option><option value="NURSE">Nurse</option>
-            <option value="PHARMACIST">Pharmacist</option>
-          </select>
+          <Select
+            allowClear={false}
+            value={f.role}
+            onChange={(v) => set('role', v)}
+            options={[
+              { value: 'ADMIN', label: 'Admin' },
+              { value: 'DOCTOR', label: 'Doctor' },
+              { value: 'RECEPTIONIST', label: 'Receptionist' },
+              { value: 'NURSE', label: 'Nurse' },
+              { value: 'PHARMACIST', label: 'Pharmacist' },
+            ]}
+          />
         </div>
         {!user && <div><label className="label">Email</label><input className="input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>}
         {!user && <div><label className="label">Password</label><input className="input" type="text" value={f.password} onChange={(e) => set('password', e.target.value)} placeholder="At least 6 characters" /></div>}
@@ -230,9 +237,13 @@ function SchedulesTab() {
   return (
     <div className="card max-w-2xl p-6">
       <label className="label">Doctor</label>
-      <select className="input mb-4 w-auto" value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
-        {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-      </select>
+      <Select
+        className="mb-4 w-56"
+        allowClear={false}
+        value={doctorId}
+        onChange={setDoctorId}
+        options={doctors.map((d) => ({ value: d.id, label: d.name }))}
+      />
       <div className="space-y-2">
         {rows.map((r, i) => (
           <div key={r.weekday} className="flex items-center gap-3">
@@ -240,9 +251,9 @@ function SchedulesTab() {
               <input type="checkbox" checked={r.enabled} onChange={(e) => setRows((s) => s.map((x, idx) => idx === i ? { ...x, enabled: e.target.checked } : x))} />
               {WEEKDAYS[r.weekday]}
             </label>
-            <input className="input w-32" type="time" value={r.startTime} disabled={!r.enabled} onChange={(e) => setRows((s) => s.map((x, idx) => idx === i ? { ...x, startTime: e.target.value } : x))} />
+            <TimePicker className="w-32" value={r.startTime} disabled={!r.enabled} onChange={(v) => setRows((s) => s.map((x, idx) => idx === i ? { ...x, startTime: v } : x))} />
             <span className="text-slate-400">to</span>
-            <input className="input w-32" type="time" value={r.endTime} disabled={!r.enabled} onChange={(e) => setRows((s) => s.map((x, idx) => idx === i ? { ...x, endTime: e.target.value } : x))} />
+            <TimePicker className="w-32" value={r.endTime} disabled={!r.enabled} onChange={(v) => setRows((s) => s.map((x, idx) => idx === i ? { ...x, endTime: v } : x))} />
           </div>
         ))}
       </div>
@@ -311,11 +322,36 @@ function PriceModal({ item, doctors, onClose, onSaved }: { item: PriceItem | nul
   return (
     <Modal open onClose={onClose} title={item ? 'Edit price item' : 'Add price item'}>
       <div className="space-y-3">
-        <div><label className="label">Type</label><select className="input" value={f.type} onChange={(e) => set('type', e.target.value)}><option value="consultation">Consultation</option><option value="procedure">Procedure</option><option value="labtest">Lab test</option></select></div>
+        <div><label className="label">Type</label>
+          <Select
+            allowClear={false}
+            value={f.type}
+            onChange={(v) => set('type', v)}
+            options={[
+              { value: 'consultation', label: 'Consultation' },
+              { value: 'procedure', label: 'Procedure' },
+              { value: 'labtest', label: 'Lab test' },
+            ]}
+          />
+        </div>
         <div><label className="label">Name</label><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
         {f.type === 'consultation' && <>
-          <div><label className="label">Doctor (optional)</label><select className="input" value={f.doctorId} onChange={(e) => set('doctorId', e.target.value)}><option value="">Any doctor</option>{doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-          <div><label className="label">Visit type (optional)</label><select className="input" value={f.visitType} onChange={(e) => set('visitType', e.target.value)}><option value="">Any</option><option value="new">New</option><option value="follow-up">Follow-up</option></select></div>
+          <div><label className="label">Doctor (optional)</label>
+            <Select
+              value={f.doctorId}
+              onChange={(v) => set('doctorId', v)}
+              placeholder="Any doctor"
+              options={doctors.map((d) => ({ value: d.id, label: d.name }))}
+            />
+          </div>
+          <div><label className="label">Visit type (optional)</label>
+            <Select
+              value={f.visitType}
+              onChange={(v) => set('visitType', v)}
+              placeholder="Any"
+              options={[{ value: 'new', label: 'New' }, { value: 'follow-up', label: 'Follow-up' }]}
+            />
+          </div>
         </>}
         <div><label className="label">Price</label><input className="input" type="number" min={0} step="0.01" value={f.price} onChange={(e) => set('price', e.target.value)} /></div>
       </div>

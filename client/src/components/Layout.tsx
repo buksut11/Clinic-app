@@ -1,8 +1,10 @@
 import { ReactNode, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 import { Role } from '../lib/types';
+import { useFloatingPanel, useCloseOnOutside } from './ui';
 import {
   IconDashboard, IconPatients, IconCalendar, IconQueue, IconLab,
   IconBilling, IconReports, IconSettings, IconSearch, IconLogout, IconPharmacy,
@@ -29,10 +31,12 @@ const NAV: NavItem[] = [
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { t, lang, setLang } = useI18n();
+  const { t, lang, dir, setLang } = useI18n();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const { triggerRef: menuRef, panelRef: menuPanelRef, style: menuStyle } = useFloatingPanel(menuOpen, { align: 'end', rtl: dir === 'rtl' });
+  useCloseOnOutside(menuOpen, () => setMenuOpen(false), [menuRef, menuPanelRef]);
 
   const items = NAV.filter((n) => user && n.roles.includes(user.role));
 
@@ -98,7 +102,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             >
               {lang === 'en' ? 'العربية' : 'English'}
             </button>
-            <div className="relative">
+            <div ref={menuRef}>
               <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-2 rounded-full px-2 py-1.5 transition hover:bg-white/50">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm" style={{ background: 'linear-gradient(180deg,#2dd4bf,#0d9488)' }}>
                   {user?.name?.charAt(0)}
@@ -108,16 +112,23 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <div className="text-xs capitalize text-slate-400">{user?.role.toLowerCase()}</div>
                 </div>
               </button>
-              {menuOpen && (
-                <div className="glass-strong absolute end-0 mt-2 w-44 rounded-2xl py-1.5 shadow-xl" onMouseLeave={() => setMenuOpen(false)}>
-                  <button onClick={() => { setMenuOpen(false); navigate('/change-password'); }} className="block w-full px-4 py-2 text-start text-sm text-slate-600 hover:bg-white/60">
-                    Change password
-                  </button>
-                  <button onClick={logout} className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-white/60">
-                    {t('nav.logout')}
-                  </button>
-                </div>
-              )}
+              {menuOpen &&
+                menuStyle &&
+                createPortal(
+                  <div
+                    ref={menuPanelRef}
+                    className="glass-strong w-44 rounded-2xl py-1.5 shadow-xl"
+                    style={{ position: 'fixed', top: menuStyle.top, left: menuStyle.left, zIndex: 100 }}
+                  >
+                    <button onClick={() => { setMenuOpen(false); navigate('/change-password'); }} className="block w-full px-4 py-2 text-start text-sm text-slate-600 hover:bg-white/60">
+                      Change password
+                    </button>
+                    <button onClick={logout} className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-white/60">
+                      {t('nav.logout')}
+                    </button>
+                  </div>,
+                  document.body
+                )}
             </div>
           </div>
         </header>

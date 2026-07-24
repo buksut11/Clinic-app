@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errMsg } from '../lib/api';
 import { Invoice, Patient, InvoiceItem, Appointment } from '../lib/types';
-import { Spinner, ErrorState, EmptyState, StatusBadge, Modal, useToast } from '../components/ui';
+import { Spinner, ErrorState, EmptyState, StatusBadge, Modal, useToast, Select } from '../components/ui';
 import { IconPlus } from '../components/icons';
 import { fmtDate, money, paidOf } from '../lib/format';
 
@@ -40,12 +40,17 @@ export default function Billing() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Billing</h1>
         <div className="flex items-center gap-2">
-          <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="">All statuses</option>
-            <option value="UNPAID">Unpaid</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="PAID">Paid</option>
-          </select>
+          <Select
+            className="w-40"
+            value={filter}
+            onChange={setFilter}
+            placeholder="All statuses"
+            options={[
+              { value: 'UNPAID', label: 'Unpaid' },
+              { value: 'PARTIAL', label: 'Partial' },
+              { value: 'PAID', label: 'Paid' },
+            ]}
+          />
           <button className="btn-primary" onClick={() => setCreating(true)}><IconPlus className="h-4 w-4" /> New invoice</button>
         </div>
       </div>
@@ -112,6 +117,7 @@ function InvoiceCreateModal({ open, onClose, onCreated }: { open: boolean; onClo
   const [discountValue, setDiscountValue] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [autoFillId, setAutoFillId] = useState('');
 
   useEffect(() => {
     if (open) api.get('/settings/clinic').then((r) => setTaxRate(r.data.taxRate));
@@ -133,6 +139,7 @@ function InvoiceCreateModal({ open, onClose, onCreated }: { open: boolean; onClo
   };
 
   const autoFill = async (appointmentId: string) => {
+    setAutoFillId(appointmentId);
     if (!appointmentId) return;
     const r = await api.get(`/invoices/suggest/${appointmentId}`);
     setItems(r.data.items.length ? r.data.items : [{ description: '', quantity: 1, unitPrice: 0 }]);
@@ -173,7 +180,7 @@ function InvoiceCreateModal({ open, onClose, onCreated }: { open: boolean; onClo
   };
   const reset = () => {
     setPatient(null); setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
-    setDiscountValue(0); setAppointments([]);
+    setDiscountValue(0); setAppointments([]); setAutoFillId('');
   };
 
   return (
@@ -205,10 +212,12 @@ function InvoiceCreateModal({ open, onClose, onCreated }: { open: boolean; onClo
         {appointments.length > 0 && (
           <div>
             <label className="label">Auto-fill from a completed visit</label>
-            <select className="input" onChange={(e) => autoFill(e.target.value)} defaultValue="">
-              <option value="">Choose a visit…</option>
-              {appointments.map((a) => <option key={a.id} value={a.id}>{fmtDate(a.date)} — Dr. {a.doctor?.name} ({a.visitType})</option>)}
-            </select>
+            <Select
+              value={autoFillId}
+              onChange={autoFill}
+              placeholder="Choose a visit…"
+              options={appointments.map((a) => ({ value: a.id, label: `${fmtDate(a.date)} — Dr. ${a.doctor?.name} (${a.visitType})` }))}
+            />
           </div>
         )}
 
@@ -234,10 +243,13 @@ function InvoiceCreateModal({ open, onClose, onCreated }: { open: boolean; onClo
             <label className="label">Discount</label>
             <div className="flex gap-1">
               <input className="input" type="number" min={0} value={discountValue} onChange={(e) => setDiscountValue(Number(e.target.value))} />
-              <select className="input w-20" value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                <option value="amount">$</option>
-                <option value="percent">%</option>
-              </select>
+              <Select
+                className="w-20"
+                allowClear={false}
+                value={discountType}
+                onChange={setDiscountType}
+                options={[{ value: 'amount', label: '$' }, { value: 'percent', label: '%' }]}
+              />
             </div>
           </div>
           <div>

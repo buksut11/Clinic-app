@@ -221,6 +221,14 @@ h1, h2, h3 {
   transform: scaleX(-1);
 }
 
+/* Centers flex content, but falls back to start-alignment instead of
+   clipping the top when the content is taller than the viewport
+   (Tailwind 3's `items-center` has no arbitrary-value/`safe` variant). */
+.items-safe-center {
+  align-items: center;
+  align-items: safe center;
+}
+
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }

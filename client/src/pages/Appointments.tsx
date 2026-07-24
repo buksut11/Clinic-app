@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, errMsg } from '../lib/api';
 import { Appointment, User } from '../lib/types';
 import { useAuth } from '../context/AuthContext';
-import { Spinner, ErrorState, StatusBadge, useToast, useConfirm, Modal } from '../components/ui';
+import { Spinner, ErrorState, StatusBadge, useToast, useConfirm, Modal, Select } from '../components/ui';
 import { IconPlus } from '../components/icons';
 import BookingModal from '../components/BookingModal';
 import {
@@ -89,10 +89,13 @@ export default function Appointments() {
         </div>
         <div className="flex items-center gap-2">
           {user?.role !== 'DOCTOR' && (
-            <select className="input w-auto" value={doctorFilter} onChange={(e) => setDoctorFilter(e.target.value)}>
-              <option value="">All doctors</option>
-              {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <Select
+              className="w-48"
+              value={doctorFilter}
+              onChange={setDoctorFilter}
+              placeholder="All doctors"
+              options={doctors.map((d) => ({ value: d.id, label: d.name }))}
+            />
           )}
           <div className="flex rounded-lg border border-slate-300">
             <button className={`px-3 py-1.5 text-sm ${view === 'day' ? 'bg-brand-600 text-white' : 'text-slate-600'}`} onClick={() => setView('day')}>Day</button>

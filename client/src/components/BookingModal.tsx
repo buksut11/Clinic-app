@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../lib/api';
 import { Patient, User } from '../lib/types';
-import { Modal, useToast } from './ui';
+import { Modal, useToast, Select, DatePicker } from './ui';
 
 // Add minutes to "HH:MM"
 function addMinutes(time: string, mins: number): string {
@@ -160,22 +160,25 @@ export default function BookingModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Doctor *</label>
-            <select className="input" value={f.doctorId} onChange={(e) => set('doctorId', e.target.value)} required>
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}{d.specialty ? ` — ${d.specialty}` : ''}</option>
-              ))}
-            </select>
+            <Select
+              value={f.doctorId}
+              onChange={(v) => set('doctorId', v)}
+              allowClear={false}
+              options={doctors.map((d) => ({ value: d.id, label: `${d.name}${d.specialty ? ` — ${d.specialty}` : ''}` }))}
+            />
           </div>
           <div>
             <label className="label">Visit type</label>
-            <select className="input" value={f.visitType} onChange={(e) => set('visitType', e.target.value)}>
-              <option value="new">New visit</option>
-              <option value="follow-up">Follow-up</option>
-            </select>
+            <Select
+              value={f.visitType}
+              onChange={(v) => set('visitType', v)}
+              allowClear={false}
+              options={[{ value: 'new', label: 'New visit' }, { value: 'follow-up', label: 'Follow-up' }]}
+            />
           </div>
           <div>
             <label className="label">Date *</label>
-            <input className="input" type="date" value={f.date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => set('date', e.target.value)} required />
+            <DatePicker value={f.date} onChange={(v) => set('date', v)} min={new Date().toISOString().slice(0, 10)} />
           </div>
           <div>
             <label className="label">
@@ -188,9 +191,12 @@ export default function BookingModal({
             ) : slotInfo && slotInfo.slots.length === 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">No free slots left{slotInfo.workingHours ? ` (${slotInfo.workingHours.start}–${slotInfo.workingHours.end})` : ''}.</div>
             ) : (
-              <select className="input" value={f.startTime} onChange={(e) => set('startTime', e.target.value)} required>
-                {slotInfo?.slots.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <Select
+                value={f.startTime}
+                onChange={(v) => set('startTime', v)}
+                allowClear={false}
+                options={(slotInfo?.slots || []).map((s) => ({ value: s, label: s }))}
+              />
             )}
           </div>
         </div>

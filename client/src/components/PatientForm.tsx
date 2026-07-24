@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { api, errMsg } from '../lib/api';
 import { Patient } from '../lib/types';
-import { useToast } from './ui';
+import { useToast, Select, DatePicker } from './ui';
 
-const BLOOD = ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const GENDERS = ['Male', 'Female', 'Other'].map((g) => ({ value: g, label: g }));
+const BLOOD = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((b) => ({ value: b, label: b }));
 
 export default function PatientForm({
   patient,
@@ -58,16 +59,11 @@ export default function PatientForm({
         </div>
         <div>
           <label className="label">Date of birth</label>
-          <input className="input" type="date" value={f.dob} onChange={(e) => set('dob', e.target.value)} />
+          <DatePicker value={f.dob} onChange={(v) => set('dob', v)} />
         </div>
         <div>
           <label className="label">Gender</label>
-          <select className="input" value={f.gender} onChange={(e) => set('gender', e.target.value)}>
-            <option value="">Select…</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Other</option>
-          </select>
+          <Select value={f.gender} onChange={(v) => set('gender', v)} options={GENDERS} />
         </div>
         <div>
           <label className="label">Phone</label>
@@ -91,11 +87,7 @@ export default function PatientForm({
         </div>
         <div>
           <label className="label">Blood type</label>
-          <select className="input" value={f.bloodType} onChange={(e) => set('bloodType', e.target.value)}>
-            {BLOOD.map((b) => (
-              <option key={b} value={b}>{b || 'Select…'}</option>
-            ))}
-          </select>
+          <Select value={f.bloodType} onChange={(v) => set('bloodType', v)} options={BLOOD} />
         </div>
         <div>
           <label className="label">Emergency contact</label>

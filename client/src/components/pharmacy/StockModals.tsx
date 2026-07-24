@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../../lib/api';
 import { Medication, StockMovement } from '../../lib/types';
-import { Modal, Spinner, useToast } from '../ui';
+import { Modal, Spinner, useToast, DatePicker } from '../ui';
 import { fmtDate, fmtDateTime } from '../../lib/format';
 
 export default function StockModals({
@@ -46,7 +46,7 @@ function ReceiveModal({ med, onClose, onDone }: { med: Medication; onClose: () =
         <div><label className="label">Quantity received *</label><input className="input" type="number" min={1} value={f.quantity} onChange={(e) => set('quantity', e.target.value)} autoFocus /></div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className="label">Batch no.</label><input className="input" value={f.batchNo} onChange={(e) => set('batchNo', e.target.value)} /></div>
-          <div><label className="label">Expiry date</label><input className="input" type="date" value={f.expiryDate} onChange={(e) => set('expiryDate', e.target.value)} /></div>
+          <div><label className="label">Expiry date</label><DatePicker value={f.expiryDate} onChange={(v) => set('expiryDate', v)} /></div>
         </div>
         <div><label className="label">Note / supplier reference</label><input className="input" value={f.reason} onChange={(e) => set('reason', e.target.value)} placeholder="e.g. PO #4821" /></div>
       </div>

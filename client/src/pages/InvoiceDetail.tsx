@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api, errMsg, openFile } from '../lib/api';
 import { Invoice } from '../lib/types';
-import { Spinner, ErrorState, StatusBadge, Modal, useToast, useConfirm } from '../components/ui';
+import { Spinner, ErrorState, StatusBadge, Modal, useToast, useConfirm, Select } from '../components/ui';
 import { fmtDateTime, money, paidOf } from '../lib/format';
 
 export default function InvoiceDetail() {
@@ -134,11 +134,16 @@ export default function InvoiceDetail() {
           </div>
           <div>
             <label className="label">Method</label>
-            <select className="input" value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })}>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="insurance">Insurance</option>
-            </select>
+            <Select
+              allowClear={false}
+              value={pay.method}
+              onChange={(v) => setPay({ ...pay, method: v })}
+              options={[
+                { value: 'cash', label: 'Cash' },
+                { value: 'card', label: 'Card' },
+                { value: 'insurance', label: 'Insurance' },
+              ]}
+            />
           </div>
           {pay.method === 'insurance' && (
             <div className="grid grid-cols-2 gap-2">

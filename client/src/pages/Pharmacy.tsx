@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../lib/api';
 import { Medication, PharmacyStats, PendingPrescription, Dispense } from '../lib/types';
-import { Spinner, ErrorState, EmptyState, Modal, useToast, useConfirm } from '../components/ui';
+import { Spinner, ErrorState, EmptyState, Modal, useToast, useConfirm, Select } from '../components/ui';
 import { IconPlus } from '../components/icons';
 import { fmtDate, fmtDateTime, money } from '../lib/format';
 import DispenseModal from '../components/pharmacy/DispenseModal';
@@ -177,11 +177,16 @@ function InventoryTab({ onChange }: { onChange: () => void }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <input className="input w-64" placeholder="Search name, generic or SKU…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="">All items</option>
-            <option value="low">Low stock</option>
-            <option value="expiring">Expiring soon</option>
-          </select>
+          <Select
+            className="w-44"
+            value={filter}
+            onChange={setFilter}
+            placeholder="All items"
+            options={[
+              { value: 'low', label: 'Low stock' },
+              { value: 'expiring', label: 'Expiring soon' },
+            ]}
+          />
         </div>
         <button className="btn-primary" onClick={() => setCreating(true)}><IconPlus className="h-4 w-4" /> Add medication</button>
       </div>

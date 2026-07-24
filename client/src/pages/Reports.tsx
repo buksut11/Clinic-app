@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../lib/api';
-import { Spinner, ErrorState, useToast } from '../components/ui';
+import { Spinner, ErrorState, useToast, DatePicker } from '../components/ui';
 import { money } from '../lib/format';
 import { format } from 'date-fns';
 import BarChart from '../components/BarChart';
@@ -61,11 +61,11 @@ export default function Reports() {
       <div className="card mb-4 flex flex-wrap items-end gap-3 p-4">
         <div>
           <label className="label">From</label>
-          <input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <DatePicker value={from} onChange={setFrom} />
         </div>
         <div>
           <label className="label">To</label>
-          <input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <DatePicker value={to} onChange={setTo} />
         </div>
         <button className="btn-primary" onClick={load}>Apply</button>
       </div>

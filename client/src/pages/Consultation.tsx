@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api, errMsg, openFile } from '../lib/api';
 import { Appointment, PrescriptionItem, LabTest } from '../lib/types';
 import { useAuth } from '../context/AuthContext';
-import { Spinner, ErrorState, StatusBadge, useToast, Modal } from '../components/ui';
+import { Spinner, ErrorState, StatusBadge, useToast, Modal, Select, DatePicker } from '../components/ui';
 import { age, fmtDate, fmtDateTime } from '../lib/format';
 
 export default function Consultation() {
@@ -171,7 +171,7 @@ function ConsultForm({ appt, onSaved, onShowHistory }: { appt: Appointment; onSa
         </div>
         <div>
           <label className="label">Follow-up date</label>
-          <input className="input" type="date" value={f.followUpDate} onChange={(e) => set('followUpDate', e.target.value)} />
+          <DatePicker value={f.followUpDate} onChange={(v) => set('followUpDate', v)} />
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between">
@@ -334,10 +334,13 @@ function LabPanel({ appt, onSaved }: { appt: Appointment; onSaved: () => void })
     <div className="card p-5">
       <h3 className="mb-3 font-semibold text-slate-800">Order lab test</h3>
       <div className="flex flex-wrap gap-2">
-        <select className="input flex-1" value={selected} onChange={(e) => { setSelected(e.target.value); setCustom(''); }}>
-          <option value="">Choose from catalog…</option>
-          {tests.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-        </select>
+        <Select
+          className="flex-1"
+          value={selected}
+          onChange={(v) => { setSelected(v); setCustom(''); }}
+          placeholder="Choose from catalog…"
+          options={tests.map((t) => ({ value: t.name, label: t.name }))}
+        />
         <button className="btn-primary" onClick={order}>Order</button>
       </div>
       {appt.labOrders && appt.labOrders.length > 0 && (

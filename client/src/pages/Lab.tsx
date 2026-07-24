@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, errMsg, openFile } from '../lib/api';
 import { LabOrder } from '../lib/types';
-import { Spinner, ErrorState, EmptyState, StatusBadge, useToast, Modal } from '../components/ui';
+import { Spinner, ErrorState, EmptyState, StatusBadge, useToast, Modal, Select } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
 const STATUSES = ['ORDERED', 'SAMPLE_COLLECTED', 'RESULT_READY'];
@@ -59,10 +59,13 @@ export default function Lab() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Lab Orders</h1>
-        <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-        </select>
+        <Select
+          className="w-48"
+          value={filter}
+          onChange={setFilter}
+          placeholder="All statuses"
+          options={STATUSES.map((s) => ({ value: s, label: s.replace('_', ' ') }))}
+        />
       </div>
 
       <div className="card overflow-hidden">
