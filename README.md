@@ -164,6 +164,13 @@ set `DATABASE_URL` + `DIRECT_URL` to your Supabase connection strings, run
 `supabase/schema.sql` (or `npm run prisma:pg:push`), then
 `npm run setup:supabase` to generate the client and seed demo data.
 
+### Local MySQL with XAMPP / phpMyAdmin
+
+Prefer to manage the data in **phpMyAdmin**? A beginner-friendly, step-by-step guide
+is in **[MYSQL-PHPMYADMIN.md](MYSQL-PHPMYADMIN.md)**. It uses
+`server/prisma/schema.mysql.prisma` and a ready-to-import **`mysql/schema.sql`**
+(all 22 tables) that you load straight from the phpMyAdmin *Import* tab.
+
 ---
 
 ## 🔒 Security notes

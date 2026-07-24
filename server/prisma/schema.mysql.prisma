@@ -1,0 +1,446 @@
+// Clinic Management System — MySQL schema (for XAMPP / phpMyAdmin / any MySQL host).
+// Mirrors prisma/schema.prisma exactly; only the datasource differs.
+// Local dev uses SQLite (schema.prisma); MySQL uses this file.
+//
+// Usage:
+//   npx prisma generate --schema prisma/schema.mysql.prisma
+//   npx prisma db push  --schema prisma/schema.mysql.prisma   (or import mysql/schema.sql)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")  // e.g. mysql://root:@localhost:3306/clinic  (XAMPP default: user root, no password)
+}
+
+
+// ----------------------------------------------------------------------------
+// Users & Auth
+// ----------------------------------------------------------------------------
+
+// Role values (SQLite has no enums): ADMIN | DOCTOR | RECEPTIONIST | NURSE | PHARMACIST
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          String
+  isActive      Boolean  @default(true)
+  // Doctor-specific
+  specialty     String?
+  signatureLine String? // e.g. "Dr. Jane Doe, MD"
+  slotLength    Int      @default(20) // minutes, for doctors
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  schedules             DoctorSchedule[]
+  appointmentsAsDoctor  Appointment[]    @relation("DoctorAppointments")
+  consultations         Consultation[]
+  prescriptions         Prescription[]
+  labOrders             LabOrder[]
+  vitalsRecorded        Vitals[]
+  auditLogs             AuditLog[]
+  documentsUploaded     Document[]
+  paymentsTaken         Payment[]
+  priceItems            PriceItem[]
+  dispenses             Dispense[]
+  stockMovements        StockMovement[]
+}
+
+// ----------------------------------------------------------------------------
+// Clinic settings (single row)
+// ----------------------------------------------------------------------------
+
+model Clinic {
+  id       Int     @id @default(1)
+  name     String  @default("My Clinic")
+  logoPath String?
+  address  String  @default("")
+  phone    String  @default("")
+  email    String  @default("")
+  currency String  @default("USD")
+  taxRate  Float   @default(0) // percent, e.g. 5 = 5%
+  updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Patients
+// ----------------------------------------------------------------------------
+
+model Patient {
+  id                String   @id @default(cuid())
+  patientNo         String   @unique // e.g. P-2026-00001
+  fullName          String
+  dob               DateTime?
+  gender            String? // Male / Female / Other
+  phone             String?
+  email             String?
+  address           String?
+  nationalId        String?
+  insuranceNo       String?
+  emergencyContact  String?
+  allergies         String?
+  chronicConditions String?
+  bloodType         String?
+  isArchived        Boolean  @default(false)
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  appointments  Appointment[]
+  consultations Consultation[]
+  prescriptions Prescription[]
+  labOrders     LabOrder[]
+  invoices      Invoice[]
+  documents     Document[]
+  vitals        Vitals[]
+  dispenses     Dispense[]
+}
+
+// ----------------------------------------------------------------------------
+// Scheduling
+// ----------------------------------------------------------------------------
+
+model DoctorSchedule {
+  id        String @id @default(cuid())
+  doctorId  String
+  weekday   Int // 0 = Sunday ... 6 = Saturday
+  startTime String // "09:00"
+  endTime   String // "17:00"
+  doctor    User   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, weekday])
+}
+
+// AppointmentStatus values: SCHEDULED | CHECKED_IN | IN_CONSULTATION | COMPLETED | NO_SHOW | CANCELLED
+model Appointment {
+  id           String            @id @default(cuid())
+  patientId    String
+  doctorId     String
+  date         DateTime // date of appointment (midnight)
+  startTime    String // "09:00"
+  endTime      String // "09:20"
+  reason       String?
+  visitType    String            @default("new") // new | follow-up
+  status       String            @default("SCHEDULED")
+  cancelReason String?
+  isDeleted    Boolean           @default(false)
+  createdById  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  doctor       User          @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  consultation Consultation?
+  vitals       Vitals?
+  invoice      Invoice?
+  labOrders    LabOrder[]
+
+  @@index([doctorId, date])
+  @@index([patientId])
+}
+
+// ----------------------------------------------------------------------------
+// Consultations / EMR
+// ----------------------------------------------------------------------------
+
+model Consultation {
+  id               String   @id @default(cuid())
+  appointmentId    String   @unique
+  patientId        String
+  doctorId         String
+  chiefComplaint   String?
+  symptoms         String?
+  examinationNotes String?
+  diagnosis        String?
+  icd10            String?
+  treatmentPlan    String?
+  followUpDate     DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  appointment Appointment        @relation(fields: [appointmentId], references: [id])
+  patient     Patient            @relation(fields: [patientId], references: [id])
+  doctor      User               @relation(fields: [doctorId], references: [id])
+  edits       ConsultationEdit[]
+  prescriptions Prescription[]
+}
+
+// Append-only edit history for consultation notes
+model ConsultationEdit {
+  id             String   @id @default(cuid())
+  consultationId String
+  editedById     String
+  editedByName   String
+  snapshot       String // JSON snapshot of the fields BEFORE the change
+  createdAt      DateTime @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+}
+
+model Vitals {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  patientId     String
+  weight        Float? // kg
+  height        Float? // cm
+  bpSystolic    Int?
+  bpDiastolic   Int?
+  temperature   Float? // celsius
+  pulse         Int?
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  recordedBy  User?       @relation(fields: [recordedById], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Prescriptions
+// ----------------------------------------------------------------------------
+
+model Prescription {
+  id             String    @id @default(cuid())
+  patientId      String
+  doctorId       String
+  consultationId String?
+  notes          String?
+  dispensedAt    DateTime? // set when the pharmacy dispenses this prescription
+  createdAt      DateTime  @default(now())
+
+  patient      Patient            @relation(fields: [patientId], references: [id])
+  doctor       User               @relation(fields: [doctorId], references: [id])
+  consultation Consultation?      @relation(fields: [consultationId], references: [id])
+  items        PrescriptionItem[]
+  dispenses    Dispense[]
+}
+
+model PrescriptionItem {
+  id             String @id @default(cuid())
+  prescriptionId String
+  name           String
+  dosage         String?
+  frequency      String?
+  duration       String?
+  instructions   String?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------------------------------
+// Lab orders
+// ----------------------------------------------------------------------------
+
+// LabStatus values: ORDERED | SAMPLE_COLLECTED | RESULT_READY
+model LabTest {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  price    Float   @default(0)
+  isActive Boolean @default(true)
+}
+
+model LabOrder {
+  id             String    @id @default(cuid())
+  patientId      String
+  doctorId       String
+  appointmentId  String?
+  testName       String
+  status         String    @default("ORDERED")
+  resultText     String?
+  resultFilePath String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  doctor      User         @relation(fields: [doctorId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Billing
+// ----------------------------------------------------------------------------
+
+// Configurable price list
+model PriceItem {
+  id        String  @id @default(cuid())
+  type      String // consultation | procedure | labtest
+  name      String
+  visitType String? // new | follow-up (for consultation type)
+  doctorId  String?
+  price     Float   @default(0)
+  isActive  Boolean @default(true)
+
+  doctor User? @relation(fields: [doctorId], references: [id])
+}
+
+// InvoiceStatus values: UNPAID | PARTIAL | PAID | CANCELLED
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNo     String        @unique
+  patientId     String
+  appointmentId String?       @unique
+  subtotal      Float         @default(0)
+  discountType  String        @default("amount") // amount | percent
+  discountValue Float         @default(0)
+  taxRate       Float         @default(0)
+  taxAmount     Float         @default(0)
+  total         Float         @default(0)
+  status        String        @default("UNPAID")
+  isDeleted     Boolean       @default(false)
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  patient     Patient       @relation(fields: [patientId], references: [id])
+  appointment Appointment?  @relation(fields: [appointmentId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+}
+
+model InvoiceItem {
+  id        String @id @default(cuid())
+  invoiceId String
+  description String
+  quantity  Int    @default(1)
+  unitPrice Float  @default(0)
+  amount    Float  @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  amount      Float
+  method      String // cash | card | insurance
+  insurerName String?
+  claimRef    String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  createdBy User?   @relation(fields: [createdById], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Documents
+// ----------------------------------------------------------------------------
+
+model Document {
+  id           String   @id @default(cuid())
+  patientId    String
+  filename     String // display name
+  storedName   String // name on disk
+  mimeType     String
+  size         Int
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  patient    Patient @relation(fields: [patientId], references: [id])
+  uploadedBy User?   @relation(fields: [uploadedById], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Pharmacy
+// ----------------------------------------------------------------------------
+
+// A medication held in the pharmacy inventory.
+model Medication {
+  id           String   @id @default(cuid())
+  sku          String   @unique // e.g. MED-00001
+  name         String // brand/display name, e.g. "Amoxil"
+  genericName  String? // e.g. "Amoxicillin"
+  form         String   @default("tablet") // tablet | capsule | syrup | injection | cream | drops | inhaler | other
+  strength     String? // e.g. "500mg"
+  unit         String   @default("unit") // dispensing unit: tablet | capsule | bottle | vial | tube ...
+  quantity     Int      @default(0) // current quantity in stock
+  reorderLevel Int      @default(20) // low-stock threshold
+  unitPrice    Float    @default(0)
+  batchNo      String?
+  expiryDate   DateTime?
+  supplier     String?
+  location     String? // shelf/bin
+  isActive     Boolean  @default(true)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  movements    StockMovement[]
+  dispenseItems DispenseItem[]
+
+  @@index([name])
+}
+
+// An immutable ledger entry for every stock change (receive / dispense / adjust).
+model StockMovement {
+  id           String   @id @default(cuid())
+  medicationId String
+  type         String // RECEIVE | DISPENSE | ADJUST
+  quantity     Int // signed: positive adds stock, negative removes
+  balanceAfter Int // stock level after this movement
+  reason       String?
+  batchNo      String?
+  expiryDate   DateTime?
+  createdById  String?
+  createdByName String?
+  createdAt    DateTime @default(now())
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation(fields: [createdById], references: [id])
+
+  @@index([medicationId, createdAt])
+}
+
+// A dispensing transaction (fills a prescription or an over-the-counter sale).
+model Dispense {
+  id             String   @id @default(cuid())
+  dispenseNo     String   @unique // e.g. DSP-2026-00001
+  patientId      String?
+  prescriptionId String?
+  dispensedById  String?
+  notes          String?
+  total          Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
+  dispensedBy  User?         @relation(fields: [dispensedById], references: [id])
+  items        DispenseItem[]
+}
+
+model DispenseItem {
+  id           String @id @default(cuid())
+  dispenseId   String
+  medicationId String
+  name         String // snapshot of the medication name at dispense time
+  quantity     Int
+  unitPrice    Float  @default(0)
+  amount       Float  @default(0)
+
+  dispense   Dispense   @relation(fields: [dispenseId], references: [id], onDelete: Cascade)
+  medication Medication @relation(fields: [medicationId], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// Audit log
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  action    String // LOGIN | CREATE | UPDATE | DELETE | PAYMENT | etc.
+  entity    String? // Patient | Appointment | Invoice ...
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+}

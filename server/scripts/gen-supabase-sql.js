@@ -22,9 +22,18 @@ const header = `-- =============================================================
 
 `;
 
+// Placeholder URLs so the postgres provider parses; `migrate diff` never connects.
 const ddl = execSync(
-  'prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.postgres.prisma --script',
-  { cwd: path.join(__dirname, '..'), encoding: 'utf8' }
+  'npx --no-install prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.postgres.prisma --script',
+  {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DATABASE_URL: 'postgresql://u:p@localhost:6543/postgres?pgbouncer=true',
+      DIRECT_URL: 'postgresql://u:p@localhost:5432/postgres',
+    },
+  }
 );
 
 fs.mkdirSync(path.dirname(out), { recursive: true });

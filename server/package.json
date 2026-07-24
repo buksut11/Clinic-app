@@ -17,7 +17,11 @@
     "prisma:pg:generate": "prisma generate --schema prisma/schema.postgres.prisma",
     "prisma:pg:push": "prisma db push --schema prisma/schema.postgres.prisma",
     "prisma:pg:sql": "node scripts/gen-supabase-sql.js",
-    "setup:supabase": "prisma generate --schema prisma/schema.postgres.prisma && prisma db push --schema prisma/schema.postgres.prisma && tsx prisma/seed.ts"
+    "setup:supabase": "prisma generate --schema prisma/schema.postgres.prisma && prisma db push --schema prisma/schema.postgres.prisma && tsx prisma/seed.ts",
+    "prisma:mysql:generate": "prisma generate --schema prisma/schema.mysql.prisma",
+    "prisma:mysql:push": "prisma db push --schema prisma/schema.mysql.prisma",
+    "prisma:mysql:sql": "node scripts/gen-mysql-sql.js",
+    "setup:mysql": "prisma generate --schema prisma/schema.mysql.prisma && prisma db push --schema prisma/schema.mysql.prisma && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
