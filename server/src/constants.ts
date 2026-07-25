@@ -16,7 +16,11 @@ export const StockMovementTypes = {
   RECEIVE: 'RECEIVE',
   DISPENSE: 'DISPENSE',
   ADJUST: 'ADJUST',
+  PURCHASE: 'PURCHASE',
 } as const;
+
+// How a pharmacy sale was paid for.
+export const PaymentMethods = ['cash', 'card', 'invoice'] as const;
 
 export const AppointmentStatuses = {
   SCHEDULED: 'SCHEDULED',

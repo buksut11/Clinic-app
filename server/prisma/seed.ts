@@ -153,6 +153,7 @@ async function main() {
         quantity: m.quantity,
         reorderLevel: m.reorderLevel,
         unitPrice: m.unitPrice,
+        costPrice: Math.round(m.unitPrice * 0.6 * 100) / 100, // demo cost ≈ 60% of sell price
         batchNo,
         expiryDate: daysFromNow(m.expiry),
         supplier: m.supplier,

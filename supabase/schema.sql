@@ -288,6 +288,7 @@ CREATE TABLE "Medication" (
     "quantity" INTEGER NOT NULL DEFAULT 0,
     "reorderLevel" INTEGER NOT NULL DEFAULT 20,
     "unitPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "costPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "batchNo" TEXT,
     "expiryDate" TIMESTAMP(3),
     "supplier" TEXT,
@@ -324,7 +325,11 @@ CREATE TABLE "Dispense" (
     "patientId" TEXT,
     "prescriptionId" TEXT,
     "dispensedById" TEXT,
+    "customerName" TEXT,
+    "customerPhone" TEXT,
+    "paymentMethod" TEXT NOT NULL DEFAULT 'cash',
     "notes" TEXT,
+    "costTotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -342,6 +347,35 @@ CREATE TABLE "DispenseItem" (
     "amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
 
     CONSTRAINT "DispenseItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Purchase" (
+    "id" TEXT NOT NULL,
+    "purchaseNo" TEXT NOT NULL,
+    "supplier" TEXT,
+    "invoiceRef" TEXT,
+    "notes" TEXT,
+    "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Purchase_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PurchaseItem" (
+    "id" TEXT NOT NULL,
+    "purchaseId" TEXT NOT NULL,
+    "medicationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "costPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "batchNo" TEXT,
+    "expiryDate" TIMESTAMP(3),
+
+    CONSTRAINT "PurchaseItem_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -399,6 +433,9 @@ CREATE INDEX "StockMovement_medicationId_createdAt_idx" ON "StockMovement"("medi
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Dispense_dispenseNo_key" ON "Dispense"("dispenseNo");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Purchase_purchaseNo_key" ON "Purchase"("purchaseNo");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
@@ -498,6 +535,15 @@ ALTER TABLE "DispenseItem" ADD CONSTRAINT "DispenseItem_dispenseId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "DispenseItem" ADD CONSTRAINT "DispenseItem_medicationId_fkey" FOREIGN KEY ("medicationId") REFERENCES "Medication"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_medicationId_fkey" FOREIGN KEY ("medicationId") REFERENCES "Medication"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -26,6 +26,7 @@ export default function MedicationForm({
     quantity: med ? undefined : 0, // opening stock only on create
     reorderLevel: med?.reorderLevel ?? 20,
     unitPrice: med?.unitPrice ?? 0,
+    costPrice: med?.costPrice ?? 0,
     batchNo: med?.batchNo || '',
     expiryDate: med?.expiryDate ? med.expiryDate.slice(0, 10) : '',
     supplier: med?.supplier || '',
@@ -45,6 +46,7 @@ export default function MedicationForm({
         unit: f.unit,
         reorderLevel: Number(f.reorderLevel),
         unitPrice: Number(f.unitPrice),
+        costPrice: Number(f.costPrice),
         batchNo: f.batchNo || null,
         expiryDate: f.expiryDate || null,
         supplier: f.supplier || null,
@@ -72,7 +74,8 @@ export default function MedicationForm({
         </div>
         <div><label className="label">Strength</label><input className="input" value={f.strength} onChange={(e) => set('strength', e.target.value)} placeholder="e.g. 500mg" /></div>
         <div><label className="label">Dispensing unit</label><input className="input" value={f.unit} onChange={(e) => set('unit', e.target.value)} placeholder="e.g. tablet, bottle, vial" /></div>
-        <div><label className="label">Unit price</label><input className="input" type="number" min={0} step="0.01" value={f.unitPrice} onChange={(e) => set('unitPrice', e.target.value)} /></div>
+        <div><label className="label">Cost price (buy)</label><input className="input" type="number" min={0} step="0.01" value={f.costPrice} onChange={(e) => set('costPrice', e.target.value)} placeholder="What you pay per unit" /></div>
+        <div><label className="label">Selling price</label><input className="input" type="number" min={0} step="0.01" value={f.unitPrice} onChange={(e) => set('unitPrice', e.target.value)} placeholder="What you charge per unit" /></div>
         {!med && <div><label className="label">Opening stock</label><input className="input" type="number" min={0} value={f.quantity} onChange={(e) => set('quantity', e.target.value)} /></div>}
         <div><label className="label">Reorder level</label><input className="input" type="number" min={0} value={f.reorderLevel} onChange={(e) => set('reorderLevel', e.target.value)} /></div>
         <div><label className="label">Batch no.</label><input className="input" value={f.batchNo} onChange={(e) => set('batchNo', e.target.value)} /></div>

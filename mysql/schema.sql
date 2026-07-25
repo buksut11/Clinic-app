@@ -298,6 +298,7 @@ CREATE TABLE `Medication` (
     `quantity` INTEGER NOT NULL DEFAULT 0,
     `reorderLevel` INTEGER NOT NULL DEFAULT 20,
     `unitPrice` DOUBLE NOT NULL DEFAULT 0,
+    `costPrice` DOUBLE NOT NULL DEFAULT 0,
     `batchNo` VARCHAR(191) NULL,
     `expiryDate` DATETIME(3) NULL,
     `supplier` VARCHAR(191) NULL,
@@ -337,7 +338,11 @@ CREATE TABLE `Dispense` (
     `patientId` VARCHAR(191) NULL,
     `prescriptionId` VARCHAR(191) NULL,
     `dispensedById` VARCHAR(191) NULL,
+    `customerName` VARCHAR(191) NULL,
+    `customerPhone` VARCHAR(191) NULL,
+    `paymentMethod` VARCHAR(191) NOT NULL DEFAULT 'cash',
     `notes` VARCHAR(191) NULL,
+    `costTotal` DOUBLE NOT NULL DEFAULT 0,
     `total` DOUBLE NOT NULL DEFAULT 0,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -354,6 +359,36 @@ CREATE TABLE `DispenseItem` (
     `quantity` INTEGER NOT NULL,
     `unitPrice` DOUBLE NOT NULL DEFAULT 0,
     `amount` DOUBLE NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Purchase` (
+    `id` VARCHAR(191) NOT NULL,
+    `purchaseNo` VARCHAR(191) NOT NULL,
+    `supplier` VARCHAR(191) NULL,
+    `invoiceRef` VARCHAR(191) NULL,
+    `notes` VARCHAR(191) NULL,
+    `total` DOUBLE NOT NULL DEFAULT 0,
+    `createdById` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `Purchase_purchaseNo_key`(`purchaseNo`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `PurchaseItem` (
+    `id` VARCHAR(191) NOT NULL,
+    `purchaseId` VARCHAR(191) NOT NULL,
+    `medicationId` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `quantity` INTEGER NOT NULL,
+    `costPrice` DOUBLE NOT NULL DEFAULT 0,
+    `amount` DOUBLE NOT NULL DEFAULT 0,
+    `batchNo` VARCHAR(191) NULL,
+    `expiryDate` DATETIME(3) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -468,6 +503,15 @@ ALTER TABLE `DispenseItem` ADD CONSTRAINT `DispenseItem_dispenseId_fkey` FOREIGN
 
 -- AddForeignKey
 ALTER TABLE `DispenseItem` ADD CONSTRAINT `DispenseItem_medicationId_fkey` FOREIGN KEY (`medicationId`) REFERENCES `Medication`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Purchase` ADD CONSTRAINT `Purchase_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `PurchaseItem` ADD CONSTRAINT `PurchaseItem_purchaseId_fkey` FOREIGN KEY (`purchaseId`) REFERENCES `Purchase`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `PurchaseItem` ADD CONSTRAINT `PurchaseItem_medicationId_fkey` FOREIGN KEY (`medicationId`) REFERENCES `Medication`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `AuditLog` ADD CONSTRAINT `AuditLog_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

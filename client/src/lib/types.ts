@@ -209,6 +209,7 @@ export interface Medication {
   quantity: number;
   reorderLevel: number;
   unitPrice: number;
+  costPrice: number;
   batchNo?: string | null;
   expiryDate?: string | null;
   supplier?: string | null;
@@ -219,7 +220,7 @@ export interface Medication {
 
 export interface StockMovement {
   id: string;
-  type: 'RECEIVE' | 'DISPENSE' | 'ADJUST';
+  type: 'RECEIVE' | 'DISPENSE' | 'ADJUST' | 'PURCHASE';
   quantity: number;
   balanceAfter: number;
   reason?: string | null;
@@ -243,12 +244,39 @@ export interface Dispense {
   dispenseNo: string;
   patientId?: string | null;
   prescriptionId?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  paymentMethod?: string | null;
   notes?: string | null;
+  costTotal?: number;
   total: number;
   createdAt: string;
   items: DispenseItemRow[];
   patient?: { fullName: string; patientNo: string } | null;
   dispensedBy?: { name: string } | null;
+}
+
+export interface PurchaseItemRow {
+  id?: string;
+  medicationId: string;
+  name: string;
+  quantity: number;
+  costPrice: number;
+  amount: number;
+  batchNo?: string | null;
+  expiryDate?: string | null;
+}
+
+export interface Purchase {
+  id: string;
+  purchaseNo: string;
+  supplier?: string | null;
+  invoiceRef?: string | null;
+  notes?: string | null;
+  total: number;
+  createdAt: string;
+  items: PurchaseItemRow[];
+  createdBy?: { name: string } | null;
 }
 
 export interface PharmacyStats {
@@ -257,8 +285,13 @@ export interface PharmacyStats {
   outOfStock: number;
   expiringSoon: number;
   stockValue: number;
+  stockCost: number;
   pendingRx: number;
   dispensedToday: number;
+  salesTotalToday: number;
+  profitToday: number;
+  purchasedToday: number;
+  purchaseTotalToday: number;
 }
 
 export interface PendingPrescription {

@@ -4,8 +4,9 @@ import { prisma } from '../prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { validateBody, asyncHandler } from '../utils/validate';
 import { audit } from '../utils/audit';
-import { Roles, MED_FORMS } from '../constants';
+import { Roles, MED_FORMS, PaymentMethods } from '../constants';
 import { nextInvoiceNo } from '../utils/sequences';
+import { Prisma } from '@prisma/client';
 
 const router = Router();
 router.use(requireAuth);
@@ -27,13 +28,25 @@ async function nextSku(): Promise<string> {
   return 'MED-' + String(seq).padStart(5, '0');
 }
 
-async function nextDispenseNo(): Promise<string> {
+async function nextDispenseNo(client: Prisma.TransactionClient = prisma): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `DSP-${year}-`;
-  const last = await prisma.dispense.findFirst({ where: { dispenseNo: { startsWith: prefix } }, orderBy: { dispenseNo: 'desc' } });
+  const last = await client.dispense.findFirst({ where: { dispenseNo: { startsWith: prefix } }, orderBy: { dispenseNo: 'desc' } });
   let seq = 1;
   if (last) {
     const n = parseInt(last.dispenseNo.slice(prefix.length), 10);
+    if (!isNaN(n)) seq = n + 1;
+  }
+  return prefix + String(seq).padStart(5, '0');
+}
+
+async function nextPurchaseNo(client: Prisma.TransactionClient = prisma): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `PUR-${year}-`;
+  const last = await client.purchase.findFirst({ where: { purchaseNo: { startsWith: prefix } }, orderBy: { purchaseNo: 'desc' } });
+  let seq = 1;
+  if (last) {
+    const n = parseInt(last.purchaseNo.slice(prefix.length), 10);
     if (!isNaN(n)) seq = n + 1;
   }
   return prefix + String(seq).padStart(5, '0');
@@ -56,6 +69,7 @@ const medSchema = z.object({
   unit: z.string().min(1).default('unit'),
   reorderLevel: z.number().int().min(0).default(20),
   unitPrice: z.number().min(0).default(0),
+  costPrice: z.number().min(0).default(0),
   batchNo: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
   supplier: z.string().optional().nullable(),
@@ -72,6 +86,7 @@ function medData(b: z.infer<typeof medSchema>) {
     unit: b.unit,
     reorderLevel: b.reorderLevel,
     unitPrice: b.unitPrice,
+    costPrice: b.costPrice,
     batchNo: b.batchNo || null,
     expiryDate: b.expiryDate ? new Date(b.expiryDate) : null,
     supplier: b.supplier || null,
@@ -246,6 +261,118 @@ router.post(
 );
 
 // ---------------------------------------------------------------------------
+// Buying / Purchasing — bring stock in from a supplier and record its cost
+// ---------------------------------------------------------------------------
+const purchaseSchema = z.object({
+  supplier: z.string().optional().nullable(),
+  invoiceRef: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  items: z
+    .array(
+      z.object({
+        medicationId: z.string().min(1),
+        quantity: z.number().int().positive(),
+        costPrice: z.number().min(0),
+        batchNo: z.string().optional().nullable(),
+        expiryDate: z.string().optional().nullable(),
+      })
+    )
+    .min(1, 'Add at least one item to purchase'),
+});
+
+router.post(
+  '/purchases',
+  requireRole(...CAN_MANAGE),
+  validateBody(purchaseSchema),
+  asyncHandler(async (req, res) => {
+    const { supplier, invoiceRef, notes, items } = req.body as z.infer<typeof purchaseSchema>;
+
+    const meds = await prisma.medication.findMany({ where: { id: { in: items.map((i) => i.medicationId) } } });
+    const medMap = new Map(meds.map((m) => [m.id, m]));
+    for (const line of items) {
+      if (!medMap.get(line.medicationId)) return res.status(400).json({ error: 'One or more medications no longer exist' });
+    }
+
+    const lineData = items.map((line) => {
+      const med = medMap.get(line.medicationId)!;
+      const amount = round2(line.costPrice * line.quantity);
+      return { line, med, amount };
+    });
+    const total = round2(lineData.reduce((s, l) => s + l.amount, 0));
+
+    const result = await prisma.$transaction(async (tx) => {
+      const purchaseNo = await nextPurchaseNo(tx);
+      const purchase = await tx.purchase.create({
+        data: {
+          purchaseNo,
+          supplier: supplier || null,
+          invoiceRef: invoiceRef || null,
+          notes: notes || null,
+          total,
+          createdById: req.user!.id,
+          items: {
+            create: lineData.map((l) => ({
+              medicationId: l.med.id,
+              name: `${l.med.name}${l.med.strength ? ' ' + l.med.strength : ''}`,
+              quantity: l.line.quantity,
+              costPrice: l.line.costPrice,
+              amount: l.amount,
+              batchNo: l.line.batchNo || null,
+              expiryDate: l.line.expiryDate ? new Date(l.line.expiryDate) : null,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      for (const l of lineData) {
+        const newQty = l.med.quantity + l.line.quantity;
+        await tx.medication.update({
+          where: { id: l.med.id },
+          data: {
+            quantity: newQty,
+            costPrice: l.line.costPrice, // remember the latest cost we paid
+            batchNo: l.line.batchNo || l.med.batchNo,
+            expiryDate: l.line.expiryDate ? new Date(l.line.expiryDate) : l.med.expiryDate,
+            supplier: supplier || l.med.supplier,
+          },
+        });
+        await tx.stockMovement.create({
+          data: {
+            medicationId: l.med.id,
+            type: 'PURCHASE',
+            quantity: l.line.quantity,
+            balanceAfter: newQty,
+            reason: `Purchased on ${purchaseNo}${supplier ? ` from ${supplier}` : ''}`,
+            batchNo: l.line.batchNo || l.med.batchNo,
+            expiryDate: l.line.expiryDate ? new Date(l.line.expiryDate) : l.med.expiryDate,
+            createdById: req.user!.id,
+            createdByName: req.user!.name,
+          },
+        });
+      }
+      return purchase;
+    });
+
+    await audit(req.user, 'PURCHASE', 'Purchase', result.id, `${result.purchaseNo} — ${items.length} item(s), total ${total}${supplier ? ` from ${supplier}` : ''}`);
+    res.status(201).json(result);
+  })
+);
+
+// Purchase history
+router.get(
+  '/purchases',
+  asyncHandler(async (_req, res) => {
+    const purchases = await prisma.purchase.findMany({
+      include: { items: true, createdBy: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    res.json(purchases);
+  })
+);
+
+// ---------------------------------------------------------------------------
 // Prescriptions awaiting dispensing
 // ---------------------------------------------------------------------------
 router.get(
@@ -271,6 +398,9 @@ router.get(
 const dispenseSchema = z.object({
   patientId: z.string().optional().nullable(),
   prescriptionId: z.string().optional().nullable(),
+  customerName: z.string().optional().nullable(),
+  customerPhone: z.string().optional().nullable(),
+  paymentMethod: z.enum(PaymentMethods).optional().default('cash'),
   notes: z.string().optional().nullable(),
   items: z
     .array(
@@ -279,7 +409,7 @@ const dispenseSchema = z.object({
         quantity: z.number().int().positive(),
       })
     )
-    .min(1, 'Add at least one item to dispense'),
+    .min(1, 'Add at least one item to sell'),
   chargeToInvoice: z.boolean().optional().default(false),
 });
 router.post(
@@ -287,8 +417,11 @@ router.post(
   requireRole(Roles.ADMIN, Roles.PHARMACIST),
   validateBody(dispenseSchema),
   asyncHandler(async (req, res) => {
-    const { patientId, prescriptionId, notes, items, chargeToInvoice } = req.body;
-    if (chargeToInvoice && !patientId) {
+    const { patientId, prescriptionId, customerName, customerPhone, notes, items } = req.body;
+    // "Charge to invoice" is either the explicit flag or the invoice payment method.
+    const toInvoice = Boolean(req.body.chargeToInvoice) || req.body.paymentMethod === 'invoice';
+    const paymentMethod = toInvoice ? 'invoice' : req.body.paymentMethod || 'cash';
+    if (toInvoice && !patientId) {
       return res.status(400).json({ error: 'A patient is required to charge medicines to an invoice' });
     }
 
@@ -304,24 +437,30 @@ router.post(
       }
     }
 
-    const dispenseNo = await nextDispenseNo();
     const lineData = items.map((line: any) => {
       const med = medMap.get(line.medicationId)!;
       const amount = round2(med.unitPrice * line.quantity);
-      return { med, quantity: line.quantity, unitPrice: med.unitPrice, amount };
+      const cost = round2(med.costPrice * line.quantity);
+      return { med, quantity: line.quantity, unitPrice: med.unitPrice, amount, cost };
     });
     const total = round2(lineData.reduce((s: number, l: any) => s + l.amount, 0));
+    const costTotal = round2(lineData.reduce((s: number, l: any) => s + l.cost, 0));
 
     // Transaction: create the dispense, its items, decrement stock, log movements
     const result = await prisma.$transaction(async (tx) => {
+      const dispenseNo = await nextDispenseNo(tx);
       const dispense = await tx.dispense.create({
         data: {
           dispenseNo,
           patientId: patientId || null,
           prescriptionId: prescriptionId || null,
           dispensedById: req.user!.id,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          paymentMethod,
           notes: notes || null,
           total,
+          costTotal,
           items: {
             create: lineData.map((l: any) => ({
               medicationId: l.med.id,
@@ -357,7 +496,7 @@ router.post(
 
       // Optionally raise an invoice so the medicines are captured as revenue
       let invoice = null;
-      if (chargeToInvoice && patientId) {
+      if (toInvoice && patientId) {
         const invoiceNo = await nextInvoiceNo(tx);
         invoice = await tx.invoice.create({
           data: {
@@ -383,7 +522,7 @@ router.post(
       return { dispense, invoice };
     });
 
-    await audit(req.user, 'DISPENSE', 'Dispense', result.dispense.id, `${dispenseNo} — ${items.length} item(s), total ${total}${result.invoice ? `, invoiced ${result.invoice.invoiceNo}` : ''}`);
+    await audit(req.user, 'DISPENSE', 'Dispense', result.dispense.id, `${result.dispense.dispenseNo} — ${items.length} item(s), total ${total}${result.invoice ? `, invoiced ${result.invoice.invoiceNo}` : ''}`);
     res.status(201).json({ ...result.dispense, invoice: result.invoice });
   })
 );
@@ -419,16 +558,45 @@ router.get(
     const lowStock = meds.filter((m) => m.quantity <= m.reorderLevel).length;
     const outOfStock = meds.filter((m) => m.quantity === 0).length;
     const expiringSoon = meds.filter((m) => m.expiryDate && new Date(m.expiryDate) <= soon).length;
+    // Stock valued at what it would sell for, and at what it cost us.
     const stockValue = round2(meds.reduce((s, m) => s + m.quantity * m.unitPrice, 0));
+    const stockCost = round2(meds.reduce((s, m) => s + m.quantity * m.costPrice, 0));
     const pendingRx = await prisma.prescription.count({ where: { dispensedAt: null } });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const dispensedToday = await prisma.dispense.count({ where: { createdAt: { gte: today, lt: tomorrow } } });
 
-    res.json({ totalItems: meds.length, lowStock, outOfStock, expiringSoon, stockValue, pendingRx, dispensedToday });
+    const salesToday = await prisma.dispense.findMany({
+      where: { createdAt: { gte: today, lt: tomorrow } },
+      select: { total: true, costTotal: true },
+    });
+    const dispensedToday = salesToday.length;
+    const salesTotalToday = round2(salesToday.reduce((s, d) => s + d.total, 0));
+    const profitToday = round2(salesToday.reduce((s, d) => s + (d.total - d.costTotal), 0));
+
+    const purchasesToday = await prisma.purchase.findMany({
+      where: { createdAt: { gte: today, lt: tomorrow } },
+      select: { total: true },
+    });
+    const purchasedToday = purchasesToday.length;
+    const purchaseTotalToday = round2(purchasesToday.reduce((s, p) => s + p.total, 0));
+
+    res.json({
+      totalItems: meds.length,
+      lowStock,
+      outOfStock,
+      expiringSoon,
+      stockValue,
+      stockCost,
+      pendingRx,
+      dispensedToday,
+      salesTotalToday,
+      profitToday,
+      purchasedToday,
+      purchaseTotalToday,
+    });
   })
 );
 
