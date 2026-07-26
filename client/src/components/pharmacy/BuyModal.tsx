@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errMsg } from '../../lib/api';
 import { Medication } from '../../lib/types';
-import { Modal, useToast } from '../ui';
+import { DatePicker, Modal, useToast } from '../ui';
 import { money } from '../../lib/format';
 
 interface Line {
@@ -132,7 +132,7 @@ export default function BuyModal({ onClose, onBought }: { onClose: () => void; o
                   <td className="py-2"><input className="input w-20 text-right" type="number" min={1} value={l.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) })} /></td>
                   <td className="py-2"><input className="input w-24 text-right" type="number" min={0} step="0.01" value={l.costPrice} onChange={(e) => setLine(i, { costPrice: Number(e.target.value) })} /></td>
                   <td className="py-2"><input className="input w-24" value={l.batchNo} onChange={(e) => setLine(i, { batchNo: e.target.value })} placeholder="Batch" /></td>
-                  <td className="py-2"><input className="input w-36" type="date" value={l.expiryDate} onChange={(e) => setLine(i, { expiryDate: e.target.value })} /></td>
+                  <td className="py-2"><DatePicker className="w-36" value={l.expiryDate} onChange={(v) => setLine(i, { expiryDate: v })} /></td>
                   <td className="py-2 text-right text-slate-600">{money(l.costPrice * l.quantity)}</td>
                   <td className="py-2 text-right"><button type="button" className="btn-ghost px-2 text-red-500" onClick={() => remove(i)}>✕</button></td>
                 </tr>

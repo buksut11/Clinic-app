@@ -183,6 +183,96 @@ h1, h2, h3 {
     -webkit-backdrop-filter: blur(6px);
   }
 
+  /* ---- Scrim ----------------------------------------------------------
+     Glass at these opacities lets the body gradient through, so three
+     identical cards can read mint, lavender and blue purely from where they
+     happen to sit. A neutral layer underneath a group of surfaces takes that
+     variable out, which is what lets tint below mean something. */
+  .scrim {
+    background: rgba(250, 252, 251, 0.5);
+    border-radius: 1.75rem;
+  }
+
+  /* ---- Semantic pills -------------------------------------------------
+     Separate from the brand accent on purpose: teal marks the primary action,
+     these mark state. The dot gives each one a non-colour cue as well. */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums;
+  }
+  .pill::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: currentColor;
+    flex: none;
+  }
+  .pill-ok   { color: #0f766e; background: rgba(13, 148, 136, 0.11); border: 1px solid rgba(13, 148, 136, 0.28); }
+  .pill-low  { color: #9a5608; background: rgba(161, 92, 7, 0.11);  border: 1px solid rgba(161, 92, 7, 0.28); }
+  .pill-out  { color: #b91c1c; background: rgba(192, 38, 38, 0.10); border: 1px solid rgba(192, 38, 38, 0.28); }
+  .pill-info { color: #1d4ed8; background: rgba(29, 78, 216, 0.09); border: 1px solid rgba(29, 78, 216, 0.24); }
+  .pill-flat { color: #475569; background: rgba(71, 85, 105, 0.09); border: 1px solid rgba(71, 85, 105, 0.18); }
+  /* No dot where the pill already carries an icon, or where the colour alone
+     isn't doing state work. */
+  .pill-flat::before, .pill-info::before, .pill-nodot::before { display: none; }
+
+  /* ---- Alert tile — the only stat that is also a control -------------- */
+  .alert-tile {
+    @apply flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-start transition;
+  }
+  .alert-tile:hover { transform: translateY(-1px); }
+  .alert-tile:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: rgba(13, 148, 136, 0.6);
+  }
+  .alert-warn { color: #9a5608; background: rgba(161, 92, 7, 0.11); border: 1px solid rgba(161, 92, 7, 0.28); }
+  .alert-crit { color: #b91c1c; background: rgba(192, 38, 38, 0.10); border: 1px solid rgba(192, 38, 38, 0.28); }
+  .alert-quiet { @apply text-slate-600; background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.7); }
+
+  /* ---- Queue row ------------------------------------------------------
+     The severity edge is drawn with a pseudo-element rather than a border so
+     that selecting a row doesn't shift its text by a pixel. */
+  .qrow {
+    @apply relative w-full rounded-2xl border border-transparent px-3 py-2.5 text-start transition;
+  }
+  .qrow:hover { background: rgba(255, 255, 255, 0.42); }
+  .qrow:focus-visible {
+    @apply outline-none ring-2;
+    --tw-ring-color: rgba(13, 148, 136, 0.6);
+  }
+  .qrow[aria-current='true'] {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  }
+  .qrow::before {
+    content: '';
+    position: absolute;
+    inset-block: 0.65rem;
+    inset-inline-start: 0;
+    width: 3px;
+    border-radius: 9999px;
+    background: transparent;
+  }
+  .qrow-flag::before { background: #c02626; }
+}
+
+/* The allergy flag is the one thing on this screen that can put someone in
+   hospital, so it arrives rather than appearing — but never at the cost of
+   someone who has asked for less motion. */
+@keyframes flagIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.flag-in { animation: flagIn 0.4s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flag-in { animation: none; }
+  .alert-tile:hover { transform: none; }
+}
+
+@layer components {
+
   /* ---- Tables --------------------------------------------------------- */
   .th {
     @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
@@ -215,6 +305,20 @@ h1, h2, h3 {
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
   }
+
+  /* ---- Meta text ------------------------------------------------------
+     slate-400 over the pastel wash measures about 2.3:1 — under the 4.5:1
+     small text needs. These two are the contrast-safe replacements: `.meta`
+     for secondary lines, `.eyebrow` for uppercase labels.
+
+     Defined last on purpose. `.meta` is written alongside `.td`, and both are
+     single classes in the same layer, so source order is the only thing
+     deciding the colour — declared any earlier and every `td meta` cell would
+     silently render at `.td`'s weight instead. */
+  .meta { @apply text-slate-600; }
+  .eyebrow {
+    @apply text-[10.5px] font-bold uppercase tracking-[0.085em] text-slate-600;
+  }
 }
 
 [dir='rtl'] .rtl-flip {
@@ -232,4 +336,45 @@ h1, h2, h3 {
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ==========================================================================
+   Print — hand a customer a paper copy of whatever carries `.print-area`.
+   Everything else is hidden rather than removed, so the receipt keeps its
+   place in the layout; `visibility: hidden` also stops ancestors painting
+   their glass tint and backdrop blur, leaving clean white paper.
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  html,
+  body {
+    height: auto !important;
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute !important;
+    inset-inline: 0;
+    top: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #0f172a !important;
+  }
+  /* Dialog overlays scroll and clip; on paper they must do neither. */
+  .items-safe-center,
+  [role='dialog'] {
+    position: static !important;
+    overflow: visible !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
 }

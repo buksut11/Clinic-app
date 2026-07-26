@@ -583,6 +583,31 @@ router.get(
     const purchasedToday = purchasesToday.length;
     const purchaseTotalToday = round2(purchasesToday.reduce((s, p) => s + p.total, 0));
 
+    // A day's takings mean little on their own — the header shows them against
+    // the week behind. Seven buckets, oldest first, today last.
+    const weekStart = new Date(today);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const weekSales = await prisma.dispense.findMany({
+      where: { createdAt: { gte: weekStart, lt: tomorrow } },
+      select: { total: true, createdAt: true },
+    });
+
+    const salesTrend: { date: string; total: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const from = new Date(weekStart);
+      from.setDate(from.getDate() + i);
+      const to = new Date(from);
+      to.setDate(to.getDate() + 1);
+      const total = weekSales
+        .filter((d) => d.createdAt >= from && d.createdAt < to)
+        .reduce((s, d) => s + d.total, 0);
+      // Local date, not toISOString() — that would shift the label across the
+      // date line for anyone east or west of UTC.
+      const date = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+      salesTrend.push({ date, total: round2(total) });
+    }
+    const salesTotalYesterday = salesTrend[5].total;
+
     res.json({
       totalItems: meds.length,
       lowStock,
@@ -593,6 +618,8 @@ router.get(
       pendingRx,
       dispensedToday,
       salesTotalToday,
+      salesTotalYesterday,
+      salesTrend,
       profitToday,
       purchasedToday,
       purchaseTotalToday,
