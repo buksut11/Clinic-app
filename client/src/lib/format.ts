@@ -18,6 +18,15 @@ export function fmtDateTime(d?: string | null): string {
   }
 }
 
+export function fmtTime(d?: string | null): string {
+  if (!d) return '-';
+  try {
+    return format(parseISO(d), 'HH:mm');
+  } catch {
+    return '-';
+  }
+}
+
 export function age(dob?: string | null): string {
   if (!dob) return '-';
   try {

@@ -289,6 +289,9 @@ export interface PharmacyStats {
   pendingRx: number;
   dispensedToday: number;
   salesTotalToday: number;
+  salesTotalYesterday: number;
+  /** Seven daily totals, oldest first, today last. */
+  salesTrend: { date: string; total: number }[];
   profitToday: number;
   purchasedToday: number;
   purchaseTotalToday: number;

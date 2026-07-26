@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { ReactNode, createContext, useContext, useState, useCallback, useId, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   format, startOfMonth, startOfWeek, addDays, addMonths, subMonths,
@@ -46,19 +46,77 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 // ---------------------------------------------------------------------------
 // Modal
 // ---------------------------------------------------------------------------
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   open,
   onClose,
   title,
+  header,
   children,
+  footer,
+  footerLead,
   wide,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Replaces the plain title line when a dialog needs a richer header; `title` is still the accessible name. */
+  header?: ReactNode;
   children: ReactNode;
-  wide?: boolean;
+  /** Actions pinned below a divider, so every dialog puts its buttons in the same place. */
+  footer?: ReactNode;
+  /** Summary shown at the start of the footer row, opposite the actions (totals, counts, blocking reasons). */
+  footerLead?: ReactNode;
+  /** `true` widens to 3xl; `'xl'` to 5xl, for dialogs that lay their body out in columns. */
+  wide?: boolean | 'xl';
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Escape closes, Tab is trapped inside the panel, the page behind is frozen, and
+  // focus returns to whatever opened the dialog. Without this, keyboard users tab
+  // straight through the overlay into the page underneath.
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // A Select/DatePicker popover owns Escape while it is open — it closes first.
+        if (document.querySelector('[data-floating-panel]')) return;
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    panelRef.current?.focus();
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      opener?.focus?.();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   // Portalled to <body>: a `.card`/`.glass` ancestor's `backdrop-filter` creates a new
   // containing block for `position: fixed` descendants, which would otherwise trap
@@ -70,17 +128,33 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className={`glass-strong my-auto w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-3xl p-6 shadow-2xl`}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`glass-strong my-auto w-full ${wide === 'xl' ? 'max-w-5xl' : wide ? 'max-w-3xl' : 'max-w-lg'} rounded-3xl p-6 shadow-2xl focus:outline-none`}
         style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.25)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-          <button className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-white/60" onClick={onClose}>
+        <div className={`mb-4 flex justify-between gap-4 ${header ? 'items-start' : 'items-center'}`}>
+          {header ?? <h3 id={titleId} className="text-lg font-bold text-slate-800">{title}</h3>}
+          {header && <span id={titleId} className="sr-only">{title}</span>}
+          <button
+            aria-label="Close"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white/60"
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>
         {children}
+        {(footer || footerLead) && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-400/20 pt-4">
+            {footerLead ?? <span />}
+            <div className="flex flex-wrap items-center justify-end gap-2">{footer}</div>
+          </div>
+        )}
       </div>
     </div>,
     document.body
@@ -205,6 +279,7 @@ export function Select({
         createPortal(
           <div
             ref={panelRef}
+            data-floating-panel
             className="glass-strong max-h-60 overflow-y-auto rounded-2xl p-1.5 shadow-2xl"
             style={{ position: 'fixed', top: style.top, left: style.left, width: style.width, zIndex: 100, boxShadow: '0 16px 40px rgba(15,23,42,0.2)' }}
           >
@@ -232,6 +307,123 @@ export function Select({
           document.body
         )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Menu — overflow actions
+//
+// A row that offers five equal buttons offers none: the eye has to read all of
+// them to find the one it wants. The two everyday actions stay inline and the
+// rest live here, which also keeps a wide table from growing an action column
+// wider than its data.
+// ---------------------------------------------------------------------------
+export interface MenuItem {
+  label: string;
+  onSelect: () => void;
+  danger?: boolean;
+}
+
+export function Menu({ items, label = 'More actions' }: { items: MenuItem[]; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const rtl = typeof document !== 'undefined' && document.dir === 'rtl';
+  const { triggerRef, panelRef, style } = useFloatingPanel(open, { align: 'end', rtl });
+  useCloseOnOutside(open, () => setOpen(false), [triggerRef, panelRef]);
+
+  return (
+    <div ref={triggerRef} className="inline-flex">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+        </svg>
+      </button>
+      {open &&
+        style &&
+        createPortal(
+          <div
+            ref={panelRef}
+            data-floating-panel
+            role="menu"
+            className="glass-strong min-w-[10rem] rounded-2xl p-1.5 shadow-2xl"
+            style={{ position: 'fixed', top: style.top, left: style.left, zIndex: 100, boxShadow: '0 16px 40px rgba(15,23,42,0.2)' }}
+          >
+            {items.map((it) => (
+              <button
+                key={it.label}
+                type="button"
+                role="menuitem"
+                className={`block w-full rounded-xl px-3 py-2 text-start text-sm transition hover:bg-white/70 ${
+                  it.danger ? 'text-red-700' : 'text-slate-700'
+                }`}
+                onClick={() => { setOpen(false); it.onSelect(); }}
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sparkline — a week of daily totals behind a headline figure
+//
+// Deliberately axis-less: it is there to say "rising", "flat" or "that Tuesday
+// was odd", and the precise number is already printed next to it in full. The
+// last point is emphasised because that is the one the headline refers to.
+// ---------------------------------------------------------------------------
+export function Sparkline({
+  values,
+  label,
+  className = '',
+}: {
+  values: number[];
+  label: string;
+  className?: string;
+}) {
+  const id = useId();
+  if (values.length < 2) return null;
+
+  const w = 116;
+  const h = 40;
+  const pad = 3;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  // A flat week — including a week of no sales at all — reads as a level line
+  // through the middle. Scaling it against a zero span would either divide by
+  // zero or pin a perfectly steady week to the floor as if it had collapsed.
+  const flat = max === min;
+  const span = max - min;
+  const x = (i: number) => pad + (i * (w - pad * 2)) / (values.length - 1);
+  const y = (v: number) => (flat ? h / 2 : h - pad - ((v - min) / span) * (h - pad * 2));
+
+  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(values.length - 1).toFixed(1)} ${h} L${x(0).toFixed(1)} ${h} Z`;
+  const lastX = x(values.length - 1);
+  const lastY = y(values[values.length - 1]);
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={className} role="img" aria-label={label}>
+      <defs>
+        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0d9488" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#0d9488" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#spark-${id})`} />
+      <path d={line} fill="none" stroke="#0d9488" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r="5.5" fill="#0d9488" opacity="0.16" />
+      <circle cx={lastX} cy={lastY} r="3" fill="#0d9488" />
+    </svg>
   );
 }
 
@@ -321,6 +513,7 @@ export function DatePicker({
         createPortal(
           <div
             ref={panelRef}
+            data-floating-panel
             className="glass-strong w-72 rounded-2xl p-3 shadow-2xl"
             style={{ position: 'fixed', top: style.top, left: style.left, zIndex: 100, boxShadow: '0 16px 40px rgba(15,23,42,0.2)' }}
           >
